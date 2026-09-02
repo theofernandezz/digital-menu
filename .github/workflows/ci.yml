@@ -17,6 +17,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The Dockerfile runs the container as `node` (uid 1000), and
+      # docker-compose.yml bind-mounts the whole repo over /app. On macOS
+      # Docker Desktop that bind mount is permissive regardless of uid, so
+      # this never showed up locally — on this Linux runner the checkout is
+      # owned by the runner's own uid, `node` can't write into it, and
+      # `pnpm dev` died with `EACCES: permission denied, mkdir
+      # '/app/.next/dev'` (confirmed via the container-logs dump on a failed
+      # run). node_modules isn't affected (docker-compose.yml gives it its
+      # own anonymous volume, seeded from the image), just the bind-mounted
+      # source tree.
+      - name: Fix bind-mount ownership for the container's node user (uid 1000)
+        run: sudo chown -R 1000:1000 .
+
       # Written from secrets, never committed. docker-compose.yml reads this
       # via env_file, and playwright.config.ts loads it directly on the
       # runner (process.loadEnvFile) for the e2e step below.
@@ -38,17 +51,12 @@ jobs:
       - name: Build and start the app container
         run: docker compose up -d --build
 
-      # The container's own CMD (`pnpm dev`) and this workflow's first
-      # `docker compose exec` both invoke corepack as the `node` user for
-      # the first time on a fresh container — the build's own
-      # `corepack prepare` ran as root, whose pnpm cache the `node` user
-      # can't see (confirmed locally: fresh container, `node` gets
-      # "Permission denied" on root's store, re-downloads its own copy).
-      # That's a slow-but-harmless one-time path on a spacious local
-      # machine; on this runner the two concurrent downloads/cold-starts
-      # raced for resources and one got SIGKILLed (exit 137). Wait for the
-      # entrypoint's own warm-up to finish — which also means pnpm dev
-      # itself came up clean — before running anything else against it.
+      # Waiting for a real HTTP response is also the simplest proof that
+      # the container's own CMD (`pnpm dev`) actually came up clean —
+      # including its own first-run corepack resolution as the `node` user,
+      # a separate slow-but-harmless path from the ownership fix above
+      # (the build's `corepack prepare --activate` runs as root; `node`
+      # can't see root's pnpm cache and re-downloads its own copy once).
       - name: Wait for the app to be ready
         run: |
           for i in $(seq 1 60); do
