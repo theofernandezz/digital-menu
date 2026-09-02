@@ -4,20 +4,11 @@ Status: `[x]` done · `[~]` in progress · `[ ]` not started
 
 ## 1. [x] Docker local dev setup
 
-No prior Docker experience on this project — expect this step to take longer. Ask for reasoning behind each Compose/Dockerfile decision, not just commands to copy.
-
-Key decisions (don't relitigate without a reason):
-
-- Docker runs only the Next.js app. Supabase stays remote/cloud — no local Postgres container, no supabase-cli stack.
-- `Dockerfile` is dev-only, single-stage. Multi-stage prod (`next build` + standalone output) is deferred to item 6 (CI/CD).
-- Base image `node:24-alpine` (LTS) — host runs Node 26 (Current), divergence accepted deliberately.
-- pnpm activated via `corepack enable` + `corepack prepare --activate`, respecting the `packageManager` pin in `package.json`.
-- `node_modules` installed both on host (editor tooling) and as a Docker-managed volume (`- /app/node_modules` in compose) — the volume un-shadows the container's Linux install after the bind mount would otherwise cover it with the host's macOS/arm binaries.
-- File watching: no polling config. Verified working via Docker Desktop's native FS event propagation on macOS — `watchOptions.pollIntervalMs` (Turbopack) is the documented fallback if it ever breaks; `WATCHPACK_POLLING` does NOT apply (that's webpack, Next 16 defaults to Turbopack).
-- `.env.local` (gitignored) + `.env.example` (committed) — `.gitignore`'s `.env*` needed an explicit `!.env.example` negation added.
-- No `docker:dev` npm script — `docker compose up` is already the canonical command.
+No prior Docker experience on this project going in. Verified manually: container brought up and torn down without Claude Code's help, confirming the workflow rather than just reading the transcript. Command details and explanations live in `docs/docker-notes.md`.
 
 ## 2. [x] Data model
+
+`structure.sql` applied to the live Supabase project as of step 3 slice 1 (previously written but not run — `[x]` meant "SQL written", now also means "schema exists in the database", verified via REST API).
 
 Tables (Postgres/Supabase):
 
@@ -37,15 +28,50 @@ Key decisions (don't relitigate without a reason):
 - `is_published` (on `restaurants`) gates visibility — access control. `is_available` (on `menu_items`) does NOT gate visibility — it's a "sold out" UI state, item still shows to the public. Do not conflate these two.
 - No multi-tenant routing (`/menu/[slug]`) yet — public route is just `/` for v1. Only add slug-based routing if/when the multi-tenant stretch goal actually starts.
 
-## 3. [~] Admin CRUD + auth
+## 3. [x] Admin CRUD + auth (backend logic)
 
+- Follow `docs/architecture.md` for every file added in this step: domain entities, outbound ports, Supabase adapters, composition root, then Server Actions. Do the layering as you build the first CRUD operation — don't write straight-to-Supabase code now and refactor into it later.
 - RLS policies AND Supabase Data API grants are both required — Supabase's Data API no longer auto-exposes new `public` tables by default (2026 platform change); RLS alone is not enough, an explicit `GRANT` is also needed per table/role.
 - Public read policies (unauthenticated): `restaurants` where `is_published`, and their `categories`/`menu_items`.
 - Owner write policies: `auth.uid() = restaurants.owner_id`, checked via join for `categories`/`menu_items`.
 
-## 4. [ ] Public menu view (Atomic Design)
+**Slice 1 (auth + categories, logic only, no UI) — done and verified.** `structure.sql` applied to the live Supabase project (step 2's schema was written but not run until now — confirmed via REST API: tables existed, RLS/grants active, RLS correctly rejected an unauthenticated write). Admin user + `Demo Restaurant` row seeded via the Admin API/PostgREST. Full slice (`lib/env.ts`, `domain/`, `application/`, `adapters/driven/supabase/`, `composition/container.ts`, `middleware.ts`) type-checks clean and passes `scripts/verify-categories-slice.ts` (9/9, incl. an anonymous-client rejection) against the real database. See `docs/crud-auth.md` for the decisions.
 
-## 5. [ ] Tests (unit + integration + one e2e)
+**Slice 2 (signIn/signOut/requireAuth) — done and verified.** `application/ports/auth-provider.ts` extended with `signIn`/`signOut`; `application/use-cases/{sign-in,sign-out}.ts`; `adapters/driven/supabase/{require-auth,supabase-auth-provider}.ts`. Verified two ways: `scripts/verify-auth-slice.ts` (5/5 — wrong password gets the generic error not Supabase's text, correct creds create a session, sign-out clears it, malformed input never reaches Supabase) and a real HTTP round-trip via curl simulating a JS-less form submit against `app/login/{page,login-form,actions}.tsx` and `app/admin/{page,actions}.tsx` — login sets a real session cookie and lands on `/admin`, wrong password gets no cookie, sign-out invalidates the session server-side (confirmed by a follow-up request redirecting again, not just a cleared client cookie).
+
+**Slice 3 (menu_items + restaurant read/update) — done and verified.** `domain/entities/{menu-item,restaurant}.ts`, `application/ports/{menu-item,restaurant}-repository.ts`, `application/use-cases/{create,list,update,delete}-menu-item.ts` + `{get-my-restaurant,update-restaurant}.ts`, matching Supabase adapters, all wired in `composition/container.ts`. `scripts/verify-menu-restaurant-slice.ts` (8/8) against the real database, including the `CategoryMismatchError` case (a menu item created with a category from a different restaurant than the one supplied — the exact denormalization risk flagged in step 2 — is rejected). `price` uses a float-drift-tolerant 2-decimal check instead of `.multipleOf(0.01)`, which false-rejects valid values like 19.99. `isAvailable`/`isPublished` are real `z.boolean()`s — the checkbox-presence translation is the driving adapter's (Server Action's) job, not the use case's.
+
+**Slice 4 (tags) — done and verified.** `domain/entities/tag.ts`, `application/ports/tag-repository.ts`, `application/use-cases/{sync-menu-item-tags,list-menu-item-tags}.ts`, `adapters/driven/supabase/supabase-tag-repository.ts`. `scripts/verify-tags-slice.ts` (8/8) caught a real bug during verification, not planned upfront: `["Vegan", "vegan"]` created 2 separate tag rows instead of 1 (the DB's `unique(restaurant_id, name)` is case-sensitive) — fixed with case-insensitive matching in the repository, first-seen casing wins for display. See `docs/crud-auth.md` for the fix's reasoning.
+
+**Backend logic for step 3 is complete: 30/30 across the 4 verification scripts, `tsc`/`eslint` clean, architecture boundary grep clean.** Full UI/UX (public menu, real `/admin` index, all forms) delegated to a separate `frontend` session, working in parallel — coordinating over `composition/container.ts`'s use cases as the contract. `frontend` has already built `app/admin/page.tsx` (real index), `app/admin/get-restaurant.ts`, `components/atoms/*`, restyled `app/login/*`, and added `@radix-ui/react-dialog`/`sonner`/`clsx`/`tailwind-merge` — this session's placeholder `/admin`/`/login` pages have been superseded.
+
+## 4. [x] Public menu view (Atomic Design)
+
+Backend read model on this side: `application/use-cases/get-published-menu.ts` (`GetPublishedMenuUseCase`, no input, no auth — public), `RestaurantRepository.findPublished()`, `TagRepository.findByMenuItems()` (bulk, avoids N+1). Returns categories nested with their items and each item's tags, ordered by `display_order` at both levels, in one call. `scripts/verify-published-menu-slice.ts` (13/13): anonymous client reads it with zero auth, sold-out items still show (`isAvailable` doesn't gate visibility), tags arrive pre-grouped per item, unpublishing the restaurant returns `null` rather than a partial menu.
+
+UI built by the `frontend` session: `components/{molecules,organisms,templates}/*`, `app/page.tsx` (replaced the create-next-app scaffold), `app/{loading,error,not-found}.tsx`. Verified end-to-end against the real DB through the actual admin flow (not just the script above) — sold-out items render "Agotado", tags dedup correctly, unpublishing shows the not-found state with zero data leakage (grepped the response). All test rows cleaned up afterward.
+
+**Known nuance, not a bug:** an unpublished `/` returns HTTP 200 instead of 404 under `next dev`/Turbopack, even though `notFound()` correctly renders the not-found boundary and leaks nothing — a dev-server-only quirk; `next build && next start` would give the real status code. Matters only if something later depends on the status code itself (health checks, crawlers) — not for the page content, which is already correct.
+
+Both admin UI and public menu are now fully built (frontend session's whole delegated scope is done, tsc/eslint/boundary clean).
+
+## 5. [x] Tests (unit + integration + one e2e)
+
+Owned entirely by this session (not split with `frontend`) — same person who wrote every `domain`/`application`/`adapters` file writes their tests, no context handoff.
+
+**Tooling**: Vitest 4 (`vitest.config.ts` for unit/component, separate `vitest.integration.config.ts` for integration — not a CLI flag, since Vitest has no built-in include/exclude override that composes with a config-level `exclude`), `@testing-library/react` + `jest-dom` + `user-event` for components, `@playwright/test` for e2e. `pnpm test` / `test:integration` / `test:e2e` / `test:all` in `package.json`.
+
+**Unit — domain + application (101 tests total, incl. components below)**: `domain/entities/*.test.ts` (invariants), `application/use-cases/*.test.ts` for all 14 use cases against in-memory fakes in `application/__tests__/fakes.ts` — exactly the payoff `docs/architecture.md` named upfront ("unit tests inject an in-memory fake... no network"). Covers auth-first ordering, Zod rejection, `CategoryMismatchError`/`NotFoundError`/`UnauthorizedError` paths, `displayOrder` computation, and the checkbox-boolean handoff contract.
+
+**Unit — components**: `components/{atoms,molecules,organisms,templates}/*.test.tsx`, jsdom per-file (`// @vitest-environment jsdom`), Testing Library. `components/ui/dialog.tsx` (vendored Radix primitive) and `app/admin/**` dialog/form components (mix presentation with Server Actions — covered by the e2e test instead) are the two explicit scope cuts.
+
+**Integration (24 tests, real Supabase project)**: `adapters/driven/supabase/__tests__/*.integration.test.ts` — direct ports of the 5 `scripts/verify-*.ts` files (now deleted). Real bug caught mid-migration, not in the original scripts: running the 5 files in parallel (Vitest's default) had them all call `signInWithPassword` on the same single admin account concurrently, racing each other's sessions — fixed with `fileParallelism: false` in the integration config, which is also just the correct call for tests sharing one real external account.
+
+**E2E (Playwright, 1 test)**: `e2e/admin-lifecycle.spec.ts` — login → create a category through the real form → delete it through the real confirm dialog → sign out → confirm `/admin` redirects to `/login` again. Runs from the **host**, not the container (needs a real browser; the image is Alpine/musl, browser binaries need glibc) — `ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` in the `Dockerfile` so the container's install doesn't waste time on browsers it will never run. Caught its own real bug while writing it: asserting `getByText(categoryName)` after deleting matched *two* elements (the list row and the confirm dialog's own heading, which repeats the name) — fixed by asserting on the specific row locator instead.
+
+**Also fixed along the way** (Docker, not testing, but hit while installing this step's deps): `ENV CI=true` added to the `Dockerfile` — pnpm's own suggested fix for `[ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY]`, which recurred when `package.json` changed without a volume rebuild. Full writeup in `docs/docker-notes.md`.
+
+**Verification**: `tsc --noEmit` and `eslint .` clean across the whole project (backend and `frontend`'s code both). `pnpm test` (101/101), `pnpm test:integration` (24/24), `pnpm test:e2e` (1/1) — 126 tests total, all green. DB left in its original seeded state after every run (checked via the service-role key after each suite).
 
 ## 6. [ ] CI/CD pipeline
 
