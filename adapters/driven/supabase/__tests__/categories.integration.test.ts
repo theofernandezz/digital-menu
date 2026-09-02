@@ -31,19 +31,26 @@ describe("categories (integration)", () => {
     restaurantId = (await getMyRestaurantUseCase(adminClient).execute()).id;
   });
 
-  it("creates a category with displayOrder 0", async () => {
+  it("creates a category, computing displayOrder as max + 1 of whatever already exists", async () => {
+    // Not asserting displayOrder === 0 — this suite shares the seeded
+    // restaurant with every other integration file and with any category
+    // orphaned by a previous interrupted run (e.g. a beforeAll hook timeout
+    // elsewhere leaving its own afterAll never run). The counter is
+    // restaurant-scoped, so it can legitimately start above 0; what must
+    // hold is the *relative* computation, which is what's actually tested.
+    const before = await listCategoriesUseCase(adminClient).execute({ restaurantId });
+    const baseline = before.length === 0 ? -1 : Math.max(...before.map((c) => c.displayOrder));
+
     created = await createCategoryUseCase(adminClient).execute({
       restaurantId,
       name: "Starters",
       description: "Small plates to start",
     });
     expect(created.name).toBe("Starters");
-    expect(created.displayOrder).toBe(0);
-  });
+    expect(created.displayOrder).toBe(baseline + 1);
 
-  it("computes displayOrder as max + 1 for the second category", async () => {
     created2 = await createCategoryUseCase(adminClient).execute({ restaurantId, name: "Mains", description: null });
-    expect(created2.displayOrder).toBe(1);
+    expect(created2.displayOrder).toBe(created.displayOrder + 1);
   });
 
   it("lists categories ordered by displayOrder", async () => {
