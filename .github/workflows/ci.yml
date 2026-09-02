@@ -51,7 +51,7 @@ jobs:
       # itself came up clean — before running anything else against it.
       - name: Wait for the app to be ready
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             curl -sf http://localhost:3000 > /dev/null && exit 0
             sleep 2
           done
@@ -88,6 +88,10 @@ jobs:
 
       - name: E2E tests (on the runner)
         run: pnpm test:e2e
+
+      - name: Dump container logs
+        if: failure()
+        run: docker compose logs app
 
       - name: Tear down
         if: always()
