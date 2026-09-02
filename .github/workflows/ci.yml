@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # One job, sequential steps — not a matrix, not parallel jobs. Both
+    # vitest.integration.config.ts (fileParallelism: false) and
+    # playwright.config.ts (fullyParallel: false) exist specifically because
+    # integration + e2e sign in as the SAME real admin account against the
+    # SAME real Supabase project; running them in concurrent CI jobs would
+    # reintroduce the exact race those settings were added to avoid.
+    steps:
+      - uses: actions/checkout@v4
+
+      # Written from secrets, never committed. docker-compose.yml reads this
+      # via env_file, and playwright.config.ts loads it directly on the
+      # runner (process.loadEnvFile) for the e2e step below.
+      - name: Write .env.local
+        run: |
+          cat <<EOF > .env.local
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_APP_URL=http://localhost:3000
+          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          EOF
+
+      # Builds the exact same image used for local dev (see docs/docker-notes.md)
+      # and installs deps into it — this is a fresh runner, so (unlike a
+      # persistent dev machine) there's no stale node_modules volume left
+      # over from a previous build to shadow the one just installed here.
+      - name: Build and start the app container
+        run: docker compose up -d --build
+
+      - name: Type-check (in container)
+        run: docker compose exec -T app pnpm exec tsc --noEmit
+
+      - name: Lint (in container)
+        run: docker compose exec -T app pnpm lint
+
+      - name: Unit + component tests (in container)
+        run: docker compose exec -T app pnpm test
+
+      - name: Integration tests — real Supabase project (in container)
+        run: docker compose exec -T app pnpm test:integration
+
+      # Playwright needs a real browser (glibc) — the app image is Alpine/musl,
+      # so e2e runs on the runner itself against the container's published
+      # port, exactly like local dev (playwright.config.ts: "Runs from the
+      # HOST... Assumes docker compose up is already running").
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install deps on the runner (for @playwright/test)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright's Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Wait for the app to respond
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000 > /dev/null && exit 0
+            sleep 2
+          done
+          echo "App never responded on :3000" >&2
+          exit 1
+
+      - name: E2E tests (on the runner)
+        run: pnpm test:e2e
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
