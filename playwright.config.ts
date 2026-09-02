@@ -12,7 +12,13 @@ process.loadEnvFile(".env.local");
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false, // shares one real admin account/session, like the integration tests
-  retries: 0,
+  // Retry only in CI — 2/4 real runs hit `next dev`/Turbopack failing to
+  // resolve `tailwindcss` on the FIRST hot-compile of a route under CI's
+  // resource pressure (a route already compiled once, e.g. `/`, was fine
+  // seconds earlier in the same run). Environmental flakiness in the dev
+  // compiler, not a product bug — Playwright's own standard mitigation for
+  // this class of problem, not a mask for a real per-test issue.
+  retries: process.env.CI ? 2 : 0,
   reporter: "list",
   use: {
     baseURL: "http://localhost:3000",
