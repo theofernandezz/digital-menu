@@ -77,6 +77,54 @@ Owned entirely by this session (not split with `frontend`) — same person who w
 1. **`categories.integration.test.ts` asserted an absolute `displayOrder === 0`**, assuming the shared seeded restaurant always starts with zero categories. It doesn't, if a *previous* run's `beforeAll` timed out partway through (its own `afterAll` never got to run, orphaning whatever it had already created) — `nextDisplayOrder` is restaurant-scoped, so leftover categories shift the counter. Fixed by asserting the *relative* computation (`baseline + 1`) instead of an absolute value — correct regardless of what else exists in that shared, persistent scope. (The equivalent assertions in the other integration files turned out to already be safe: they're scoped to a category/item created fresh within that same `beforeAll`, which is guaranteed empty no matter what else is in the DB.)
 2. **`SupabaseAuthProvider.getCurrentUserId` conflated "not authenticated" with "the session check itself failed."** Any error from `getUser()` — including `AuthRetryableFetchError` from a network blip — was mapped to the same `UnauthorizedError`, indistinguishable from a genuinely logged-out user. This is exactly what made the CI failure confusing: a session valid moments earlier in the same test file's `beforeAll` appeared to just stop being valid, with no way to tell if that was a real auth problem or infra flakiness. Fixed to check `isAuthSessionMissingError()` / `isAuthApiError(error) && error.status === 401` (both exported from `@supabase/supabase-js`) for the genuine "not authenticated" case, and re-throw anything else as `SupabaseAdapterError` so a future occurrence is diagnosable instead of masked.
 
-## 6. [ ] CI/CD pipeline
+## 6. [x] CI/CD pipeline
+
+`.github/workflows/ci.yml` — single job, sequential steps (not a matrix, not
+parallel jobs): `vitest.integration.config.ts` (`fileParallelism: false`) and
+`playwright.config.ts` (`fullyParallel: false`) both exist because
+integration and e2e sign in as the same real admin account against the same
+real Supabase project; concurrent CI jobs would reintroduce that exact race.
+
+Mirrors the container/host split already established locally
+(`docs/docker-notes.md`): `tsc`, `eslint`, unit and integration tests run via
+`docker compose exec` inside the same image used for dev; e2e runs on the
+runner itself (Ubuntu/glibc, unlike the Alpine/musl image) against the
+container's published port, matching how Playwright already runs from the
+host locally. Secrets (`NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`) are written
+into `.env.local` from GitHub Actions secrets at the start of the job.
+
+**Real CI-only bugs found and fixed getting the first run green** (all
+absent locally on macOS Docker Desktop — a genuine payoff of actually
+running this in CI instead of only locally):
+
+1. **Bind-mount ownership.** The container runs as `node` (uid 1000);
+   `docker-compose.yml` bind-mounts the repo over `/app`. macOS Docker
+   Desktop ignores uid on bind mounts; a real Linux runner doesn't — the
+   checkout was owned by the runner's own uid, so `node` had no write
+   access and `pnpm dev` died with `EACCES: permission denied, mkdir
+   '/app/.next/dev'`. Fixed with `sudo chmod -R a+rwX .` right after
+   checkout (a `chown` was tried first — it transferred ownership away from
+   the runner's own user, which then couldn't write `.env.local` a step
+   later). Full writeup in `docs/docker-notes.md` item 13.
+2. **Readiness ordering.** The first `docker compose exec` ran before the
+   container had actually finished starting. Moved the curl-retry wait to
+   right after `docker compose up -d --build`, before any exec-based step.
+3. **No failure visibility.** The first couple of failures gave zero insight
+   into what actually broke inside the container. Added a
+   `docker compose logs app` step (`if: failure()`) — this is what surfaced
+   bug 1 in the first place.
+
+Plus the two integration-test bugs this pipeline surfaced, documented in
+step 5 above (`categories.integration.test.ts`'s absolute `displayOrder`
+assertion, and `SupabaseAuthProvider` conflating a failed session check with
+genuine unauthorized) — both only showed up under CI's slower, less
+forgiving network path to Supabase, not locally.
+
+**Verified**: PR #1 (`ci/github-actions-pipeline` → `main`), full pipeline
+green on GitHub Actions after the fixes above — `tsc`, `eslint`, 101 unit,
+23 integration, 1 e2e, all passing on the real runner. DB confirmed back in
+its original seeded state after every run (including the failed ones along
+the way) via the service-role key.
 
 ## 7. [ ] Stretch: multi-tenant
