@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isAuthApiError, isAuthSessionMissingError } from "@supabase/supabase-js";
 import type { AuthProvider } from "@/application/ports/auth-provider";
 import { InvalidCredentialsError, UnauthorizedError } from "@/domain/errors/domain-errors";
 import { SupabaseAdapterError } from "@/adapters/driven/supabase/errors";
@@ -13,7 +14,22 @@ export class SupabaseAuthProvider implements AuthProvider {
       data: { user },
       error,
     } = await this.client.auth.getUser();
-    if (error || !user) throw new UnauthorizedError();
+
+    if (error) {
+      // A missing session or an expired/invalid token IS "not authenticated"
+      // — that's the only case this should be UnauthorizedError. Anything
+      // else (AuthRetryableFetchError from a network blip, a 5xx from
+      // Supabase, ...) is an infra failure, not an authorization decision —
+      // masking it as UnauthorizedError makes a transient hiccup
+      // indistinguishable from an actual logged-out user, which is exactly
+      // what made a real CI failure hard to diagnose (see docs/build-plan.md).
+      if (isAuthSessionMissingError(error) || (isAuthApiError(error) && error.status === 401)) {
+        throw new UnauthorizedError();
+      }
+      throw new SupabaseAdapterError("Failed to verify the current session", error);
+    }
+    if (!user) throw new UnauthorizedError();
+
     return user.id;
   }
 
