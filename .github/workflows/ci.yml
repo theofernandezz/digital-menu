@@ -38,6 +38,26 @@ jobs:
       - name: Build and start the app container
         run: docker compose up -d --build
 
+      # The container's own CMD (`pnpm dev`) and this workflow's first
+      # `docker compose exec` both invoke corepack as the `node` user for
+      # the first time on a fresh container — the build's own
+      # `corepack prepare` ran as root, whose pnpm cache the `node` user
+      # can't see (confirmed locally: fresh container, `node` gets
+      # "Permission denied" on root's store, re-downloads its own copy).
+      # That's a slow-but-harmless one-time path on a spacious local
+      # machine; on this runner the two concurrent downloads/cold-starts
+      # raced for resources and one got SIGKILLed (exit 137). Wait for the
+      # entrypoint's own warm-up to finish — which also means pnpm dev
+      # itself came up clean — before running anything else against it.
+      - name: Wait for the app to be ready
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000 > /dev/null && exit 0
+            sleep 2
+          done
+          echo "App never responded on :3000" >&2
+          exit 1
+
       - name: Type-check (in container)
         run: docker compose exec -T app pnpm exec tsc --noEmit
 
@@ -65,15 +85,6 @@ jobs:
 
       - name: Install Playwright's Chromium
         run: pnpm exec playwright install --with-deps chromium
-
-      - name: Wait for the app to respond
-        run: |
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:3000 > /dev/null && exit 0
-            sleep 2
-          done
-          echo "App never responded on :3000" >&2
-          exit 1
 
       - name: E2E tests (on the runner)
         run: pnpm test:e2e
