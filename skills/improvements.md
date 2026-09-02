@@ -238,3 +238,75 @@ Both the SKILL.md, golden-prompts.json, and prompt-suite-registry.json were asse
 **Gap:** No skill in `skills/generic/` covers Docker, docker-compose, or containerization (verified by grep across `skills/`, `agents/`, and all `AGENTS.md` files — zero hits). `skills/_index.md`'s 25-skill list has no infra/devops entry. Had to derive layer-caching order, the bind-mount-vs-named-volume pattern for `node_modules`, base-image/LTS tradeoffs, and Next 16/Turbopack-specific file-watching behavior (`watchOptions.pollIntervalMs`, not the webpack-era `WATCHPACK_POLLING`) from first principles + framework source instead of a documented pattern.
 **Suggested fix:** Add a `docker` (or `containerization`) generic skill covering: dev vs. prod multi-stage Dockerfile patterns for Next.js, the `node_modules` bind-mount-shadowing gotcha and its named-volume fix, pnpm + corepack setup in a container, and Next.js/Turbopack-specific dev-server watch options for bind mounts (macOS FSEvents propagation vs. `pollIntervalMs` polling fallback).
 **Priority:** High — this is one of the project's stated interview-skill gaps (CLAUDE.md), so it will recur.
+
+---
+
+## 2026-09-02 — SIGNAL:conflict — database vs. env-config
+
+**Trigger:** Resolving `docs/architecture.md`'s Supabase-client boundary for build-plan step 3 (admin CRUD + auth).
+**Gap:** `skills/generic/database/SKILL.md` (lines ~224-263) defines `lib/supabase/server.ts`/`client.ts` using `process.env.NEXT_PUBLIC_SUPABASE_URL!` and `process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!` — the exact raw-`process.env` + non-null-assertion pattern `skills/generic/env-config/SKILL.md` marks FORBIDDEN.
+**Suggested fix:** Update `database`'s Supabase client examples to read through `env.ts` (`import { env } from '@/lib/env'`) instead of `process.env!`, matching `env-config`. For this project specifically, `env-config` is authoritative — documented in `docs/architecture.md`.
+**Priority:** High — every Supabase client this project writes touches this pattern, starting with step 3's first file.
+
+---
+
+## 2026-09-02 — SIGNAL:conflict — nextjs-core vs. error-handling vs. database (Server Action return shape)
+
+**Trigger:** Deciding the Server Action / use-case boundary for step 3 slice 1 (auth + categories).
+**Gap:** Three mutually incompatible Server Action shapes are each presented as "the" pattern: `nextjs-core/SKILL.md:191-253` mandates `(prevState, formData) => Promise<XState>` with `{ errors?, success? }`, matching `useActionState`. `error-handling/SKILL.md:173-230` mandates `(formData) => Promise<ActionResult<T>>` — no `prevState`, so it is NOT `useActionState`-compatible — with a discriminated `{ success: true, data } | { success: false, error }`. `database/SKILL.md:412-465` follows `nextjs-core`'s prevState shape but also mixes in `error-handling`'s error codes. None cross-reference each other.
+**Suggested fix:** Pick one canonical shape and make the other two skills defer to it, or document when each applies (e.g. `useActionState`-driven forms vs. fire-and-forget actions). For this project: `docs/crud-auth.md`'s `authedAction(schema, handler)` wrapper returning `{ success, error } | { success, data }` is the decision — to be finalized when the first Server Action (`signIn`) is actually written in the next slice.
+**Priority:** High — every mutating Server Action in this project hits this choice.
+
+---
+
+## 2026-09-02 — SIGNAL:gap — nextjs-core / database / agents/auth.md (updateSession never implemented)
+
+**Trigger:** Writing `adapters/driven/supabase/middleware-client.ts` for step 3 slice 1.
+**Gap:** `updateSession(request)` is imported in the mandated `middleware.ts` snippets in `nextjs-core/SKILL.md:518-540`, `database/SKILL.md` (file-structure block), and both `agents/auth.md`/`auth/AGENTS.md`, but its implementation is never shown anywhere in the library. Had to write it from the `@supabase/ssr` docs directly (cookie-forwarding pattern in a Next.js middleware, `getUser()` for the refresh side-effect, redirect on missing user).
+**Suggested fix:** Add the actual `updateSession()` implementation to `database/SKILL.md` (or a new file in its snippet set) alongside the client/server client examples it already gives.
+**Priority:** High — this is required for any Supabase-authenticated app using this library, not project-specific.
+
+---
+
+## 2026-09-02 — SIGNAL:stale — database (redirect() inside try/catch)
+
+**Trigger:** Comparing `database/SKILL.md`'s Server Action example against the auth-check ordering used in step 3 slice 1.
+**Gap:** `database/SKILL.md:412-465`'s mandated `createProject` Server Action calls `redirect(...)` **inside** the `try` block, then has `catch (error) { ...; throw error }`. `redirect()` works by throwing a `NEXT_REDIRECT` error internally — that throw is caught by this same `catch`, matches none of the `instanceof` checks, and gets re-thrown by the final `throw error`. It happens to work today only because re-throwing preserves the special error Next.js looks for, but it's fragile: any future change to the catch block risks swallowing the redirect.
+**Suggested fix:** Move `redirect()` after the try/catch, or explicitly re-check `isRedirectError(error)` first and re-throw before the `instanceof AppError`/generic branches.
+**Priority:** Low — works today by accident, but easy to break silently.
+
+---
+
+## 2026-09-02 — SIGNAL:conflict — hexagonal-architecture skill vs. docs/architecture.md
+
+**Trigger:** Confirming the folder layout for step 3 before writing any files.
+**Gap:** `skills/generic/hexagonal-architecture/SKILL.md` prescribes `lib/core/`, `lib/adapters/`, a single `composition.ts` file, "No DI container" (line 65), and ESLint `eslint-plugin-boundaries` enforcement (241-280, not installed). `docs/architecture.md` — authoritative for this project per `CLAUDE.md:24` — uses root-level `domain/`, `application/`, `adapters/`, `composition/container.ts`, and enforces the boundary via a literal grep, not a lint plugin. The two layouts don't compose; following the skill's paths would silently diverge from the project's own doc.
+**Suggested fix:** Either make `hexagonal-architecture/SKILL.md` support a root-level layout as a documented variant, or have `docs/architecture.md` explicitly say "supersedes `skills/generic/hexagonal-architecture` for folder paths" so a session that loads the skill first doesn't start writing to `lib/core/`.
+**Priority:** Medium — caught before any code was written this time; would silently produce two incompatible trees otherwise.
+
+---
+
+## 2026-09-02 — SIGNAL:gap — nextjs-core (middleware.ts deprecated in Next 16.3.3, no skill mentions it)
+
+**Trigger:** `docker compose logs` after adding `middleware.ts` for step 3 slice 1 showed: `⚠ The "middleware" file convention is deprecated. Please use "proxy" instead.`
+**Gap:** `nextjs-core/SKILL.md` is written against Next 16.2.1 and gives `middleware.ts` as the canonical pattern (lines 518-540) with no mention of this deprecation. Next 16.3.3 (this project's installed version) already warns on boot and offers `npx @next/codemod@canary middleware-to-proxy`. The file still works today (verified: `/admin/categories` correctly redirects to `/login`), but a future Next release will presumably remove the convention entirely.
+**Suggested fix:** Update `nextjs-core/SKILL.md`'s middleware section to use `proxy.ts`, noting `middleware.ts` as the deprecated-but-still-working legacy name, or add a changelog entry so projects on newer Next versions get flagged.
+**Priority:** Medium — not breaking yet, but every project using this skill's middleware pattern will hit the same warning and eventually a hard break.
+
+---
+
+## 2026-09-02 — SIGNAL:conflict — ux vs. this project's file layout (admin dashboard)
+
+**Trigger:** Building the categories/items/settings admin CRUD screens (build-plan step 3 UI).
+**Gap:** `ux/SKILL.md`'s "File Structure" section (lines ~217-241) prescribes `components/dashboard/*.tsx` for list/toolbar/form-panel/delete-dialog components and `lib/actions/*.ts` for the Server Actions. This project's actual conventions (both `docs/architecture.md` and `docs/crud-auth.md`'s explicit scope cut) put admin CRUD components colocated under `app/admin/<entity>/*.tsx` next to their `actions.ts` — no `components/dashboard/` tree, no `lib/actions/`. Atomic Design (`components/atoms/…`) is reserved for pieces reused across admin and the public menu (Button, Input, Label, …), not a home for one-screen dashboard composites. Following `ux`'s file structure literally would have produced a fourth, unused component tree alongside `atoms/` and the colocated `app/admin/` files.
+**Suggested fix:** Make `ux/SKILL.md`'s File Structure section explicitly a "suggested default, not mandatory" and add a note for projects using a hexagonal/Atomic-Design layout: colocate dashboard composites next to their route (`app/**/<entity>/*.tsx`) instead of a parallel `components/dashboard/` tree, and put Server Actions in the same route folder (`actions.ts`) rather than a separate `lib/actions/` — matching what `nextjs-core`/`hexagonal-architecture` already say about colocation.
+**Priority:** Medium — caught before any file was misplaced this time, but every project combining `ux` with a colocated-actions convention will hit the same fork.
+
+---
+
+## 2026-09-02 — SIGNAL:conflict — ui-engineering (shadcn under components/ui/) vs. an Atomic Design tree
+
+**Trigger:** Adding Radix Dialog for the delete/edit confirmation modals in the admin CRUD screens.
+**Gap:** `ui-engineering/SKILL.md`'s "Component Libraries" section (lines ~262-347) treats `components/ui/` (shadcn's default output folder) as if it were the project's only component tier, with no mention of how it should relate to an Atomic Design tree (`atoms/molecules/organisms/templates`) when both are in use, as this project's `CLAUDE.md` mandates. Without a stated rule, `components/ui/` risks becoming an unofficial fifth layer that pages import from directly, alongside — and inconsistent with — `components/atoms/`.
+**Suggested fix:** Add a short note to `ui-engineering/SKILL.md`: when a project also uses Atomic Design, treat `components/ui/` as vendored third-party primitives (not a tier of the design system) — reusable pieces get wrapped or re-exported through `atoms/` (or composed directly, if the composing component is itself the page-level composition point, e.g. a colocated dialog), but `ui/` is never itself "the atoms folder." Prevents two parallel, competing component hierarchies.
+**Priority:** Low — resolved by convention on this project without much friction, but worth documenting so the next project combining shadcn + Atomic Design doesn't have to re-derive the same rule.
