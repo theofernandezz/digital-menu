@@ -153,3 +153,31 @@ rmdir '/app/node_modules/.bin'` — when the volume's `node_modules` had
 already gone through one failed partial reinstall. `CI=true` fixes the
 "nobody's here to answer the prompt" case; `down -v` is still the fix once
 the volume itself is in a bad state.
+
+## 13. Bind-mount ownership: fine on macOS, breaks on a Linux CI runner
+
+The Dockerfile runs the container as `node` (uid 1000), and
+`docker-compose.yml` bind-mounts the whole repo over `/app`. On macOS Docker
+Desktop that bind mount is permissive regardless of uid — this project ran
+for the entire local build without ever noticing. On a real Linux host (a
+GitHub Actions runner, in `.github/workflows/ci.yml`), the checked-out repo
+is owned by the runner's own uid, `node` has no write access to it, and
+`pnpm dev` died with `Error: EACCES: permission denied, mkdir
+'/app/.next/dev'` — the container came up, but the app inside it never
+served anything, so the workflow's readiness wait just timed out with no
+obvious cause until `docker compose logs app` was added to the workflow to
+actually see it.
+
+Fix, in CI only (`chmod`, not `chown` — a first attempt at
+`chown -R 1000:1000 .` transferred the checkout away from the runner's own
+user, which then couldn't write `.env.local` a step later):
+
+```yaml
+- uses: actions/checkout@v4
+- name: Allow the container's node user to write into the checkout
+  run: sudo chmod -R a+rwX .
+```
+
+`node_modules` is unaffected either way — it's its own anonymous volume
+(seeded from the image at build time as root), not part of the bind mount.
+Nothing to fix locally; this is a CI-environment-only step.
