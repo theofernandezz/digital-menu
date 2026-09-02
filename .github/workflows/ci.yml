@@ -27,8 +27,14 @@ jobs:
       # run). node_modules isn't affected (docker-compose.yml gives it its
       # own anonymous volume, seeded from the image), just the bind-mounted
       # source tree.
-      - name: Fix bind-mount ownership for the container's node user (uid 1000)
-        run: sudo chown -R 1000:1000 .
+      #
+      # chmod, not chown: a `chown -R 1000:1000` (tried first) transfers
+      # ownership away from the runner's own user, which then can't write
+      # .env.local a few steps below. Opening permissions for everyone
+      # keeps both the runner and the container's node user able to write —
+      # fine for a throwaway CI checkout.
+      - name: Allow the container's node user to write into the checkout
+        run: sudo chmod -R a+rwX .
 
       # Written from secrets, never committed. docker-compose.yml reads this
       # via env_file, and playwright.config.ts loads it directly on the
