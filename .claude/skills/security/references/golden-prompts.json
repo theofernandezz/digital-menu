@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "skill": "security",
+  "cases": [
+    {
+      "id": "security-server-action-auth",
+      "title": "Server Action with full auth + input validation",
+      "prompt": "Create a Next.js Server Action that updates a user's profile. It must authenticate the user, validate all inputs with Zod, and never expose internal errors to the client.",
+      "checks": {
+        "mustIncludeAll": [
+          "requireAuth",
+          "z.object",
+          "safeParse",
+          "revalidatePath"
+        ],
+        "mustAvoid": [
+          "process.env directly",
+          "any",
+          "error.message"
+        ]
+      },
+      "tags": ["server-action", "auth", "validation"]
+    },
+    {
+      "id": "security-rls-policy",
+      "title": "Supabase RLS policy for org-scoped data",
+      "prompt": "Write RLS policies for a `projects` table where users can only see and edit projects belonging to their organization. Include both SELECT and UPDATE policies.",
+      "checks": {
+        "mustIncludeAll": [
+          "auth.uid()",
+          "USING",
+          "WITH CHECK",
+          "organization"
+        ],
+        "mustAvoid": [
+          "DISABLE ROW LEVEL SECURITY",
+          "FOR ALL TO public"
+        ]
+      },
+      "tags": ["rls", "supabase", "authorization"]
+    },
+    {
+      "id": "security-input-validation",
+      "title": "Reject dangerous inputs without leaking schema",
+      "prompt": "Create a form handler for a contact form that accepts name, email, and message. Validate all fields server-side, reject invalid inputs with safe error messages, and never expose Zod schema details to the user.",
+      "checks": {
+        "mustIncludeAny": [
+          "safeParse",
+          "ZodError",
+          "fieldErrors"
+        ],
+        "mustAvoid": [
+          "JSON.stringify(error)",
+          "error.message to client",
+          "innerHTML"
+        ]
+      },
+      "tags": ["validation", "forms", "xss"]
+    },
+    {
+      "id": "security-no-client-trust",
+      "title": "Never trust client-side auth checks",
+      "prompt": "A feature should only be accessible to admin users. Show the correct pattern: server-side role check in the Server Component, and explain why a client-side check alone is insufficient.",
+      "checks": {
+        "mustIncludeAll": [
+          "requireRole",
+          "redirect"
+        ],
+        "mustAvoid": [
+          "useSession",
+          "if (user.role === 'admin') return <Component />",
+          "client-side only"
+        ]
+      },
+      "tags": ["authorization", "server-component", "roles"]
+    },
+    {
+      "id": "security-webhook-signature",
+      "title": "Webhook endpoint with signature verification",
+      "prompt": "Create a Next.js API route that receives a webhook. It must verify the signature before processing, reject tampered requests with a generic error, and never log the raw secret.",
+      "checks": {
+        "mustIncludeAll": [
+          "signature",
+          "timingSafeEqual",
+          "400"
+        ],
+        "mustAvoid": [
+          "console.log(secret)",
+          "skip verification",
+          "any"
+        ]
+      },
+      "tags": ["webhook", "api", "signature"]
+    }
+  ]
+}

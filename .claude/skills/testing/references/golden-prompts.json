@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "skill": "testing",
+  "cases": [
+    {
+      "id": "testing-user-behavior",
+      "title": "Test user behavior, not implementation",
+      "prompt": "Write tests for a login form component. Test what the user sees and does, not internal state or component methods. Include the success case, validation errors, and loading state.",
+      "checks": {
+        "mustIncludeAll": [
+          "getByRole",
+          "userEvent",
+          "waitFor"
+        ],
+        "mustAvoid": [
+          "getByTestId",
+          "component.state",
+          "instance()",
+          "wrapper.find"
+        ]
+      },
+      "tags": ["component", "user-event", "behavior"]
+    },
+    {
+      "id": "testing-server-action",
+      "title": "Test a Server Action with MSW",
+      "prompt": "Write integration tests for a createTask Server Action that calls an external API. Mock the HTTP layer with MSW, not the module. Test success, validation failure, and network error cases.",
+      "checks": {
+        "mustIncludeAll": [
+          "http.post",
+          "HttpResponse",
+          "server.use"
+        ],
+        "mustAvoid": [
+          "vi.mock('fetch')",
+          "jest.mock",
+          "any"
+        ]
+      },
+      "tags": ["server-action", "msw", "integration"]
+    },
+    {
+      "id": "testing-mock-cleanup",
+      "title": "Correct mock cleanup in Vitest 4",
+      "prompt": "Set up a test file that uses both vi.mock() for a module and vi.spyOn() for a method. Show the correct afterEach cleanup that handles both automocks and manual spies in Vitest 4.",
+      "checks": {
+        "mustIncludeAll": [
+          "vi.resetAllMocks",
+          "vi.restoreAllMocks",
+          "afterEach"
+        ],
+        "mustAvoid": [
+          "restoreAllMocks only",
+          "clearAllMocks only",
+          "no cleanup"
+        ]
+      },
+      "tags": ["vitest", "mocks", "cleanup", "v4"]
+    },
+    {
+      "id": "testing-async-timers",
+      "title": "Test async logic without arbitrary sleeps",
+      "prompt": "Write a test for a function that debounces an API call by 300ms. Use fake timers to control time, never sleep(). Show how to advance timers and flush promises.",
+      "checks": {
+        "mustIncludeAll": [
+          "vi.useFakeTimers",
+          "vi.advanceTimersByTime",
+          "vi.useRealTimers"
+        ],
+        "mustAvoid": [
+          "sleep(",
+          "setTimeout(() => {}, ",
+          "await new Promise"
+        ]
+      },
+      "tags": ["timers", "async", "debounce"]
+    },
+    {
+      "id": "testing-coverage-config",
+      "title": "Vitest 4 coverage configuration",
+      "prompt": "Configure Vitest 4 with V8 coverage. Require 80% coverage thresholds, include only src/ files, and use maxWorkers for CI performance. Show the full vitest.config.ts.",
+      "checks": {
+        "mustIncludeAll": [
+          "maxWorkers",
+          "coverage.include",
+          "provider: 'v8'",
+          "thresholds"
+        ],
+        "mustAvoid": [
+          "maxThreads",
+          "maxForks",
+          "coverage.all"
+        ]
+      },
+      "tags": ["config", "coverage", "vitest4", "ci"]
+    }
+  ]
+}

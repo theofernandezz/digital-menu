@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "skill": "database",
+  "cases": [
+    {
+      "id": "database-rls-table-creation",
+      "title": "New table always with RLS",
+      "prompt": "Create a `documents` table where users can only see and modify their own documents, and org admins can see all documents in their org. Include the full SQL: CREATE TABLE, RLS enable, and all policies.",
+      "checks": {
+        "mustIncludeAll": [
+          "ENABLE ROW LEVEL SECURITY",
+          "auth.uid()",
+          "CREATE POLICY",
+          "WITH CHECK",
+          "USING"
+        ],
+        "mustAvoid": [
+          "DISABLE ROW LEVEL SECURITY",
+          "FOR ALL TO public",
+          "without RLS"
+        ]
+      },
+      "tags": ["rls", "schema", "security"]
+    },
+    {
+      "id": "database-service-layer",
+      "title": "Service layer with Zod validation",
+      "prompt": "Implement the full data access layer for a `projects` resource: Zod schema, service class, cached data fetcher, and a Server Action using the service. No raw Supabase calls outside the service.",
+      "checks": {
+        "mustIncludeAll": [
+          "z.object",
+          "class",
+          "cache(",
+          "'use server'"
+        ],
+        "mustAvoid": [
+          "supabase.from('projects') outside service",
+          "process.env.SUPABASE",
+          "any"
+        ]
+      },
+      "tags": ["service-layer", "zod", "architecture"]
+    },
+    {
+      "id": "database-n-plus-one",
+      "title": "Fix N+1 query with nested select",
+      "prompt": "A page lists projects and for each project shows the number of tasks. The current code makes one query per project. Show the N+1 problem clearly, then fix it with a single Supabase nested select.",
+      "checks": {
+        "mustIncludeAll": [
+          "select(`",
+          "tasks"
+        ],
+        "mustAvoid": [
+          "for (const project",
+          "await supabase.from('tasks') inside loop"
+        ]
+      },
+      "tags": ["performance", "n+1", "queries"]
+    },
+    {
+      "id": "database-org-rls-policy",
+      "title": "Org-based RLS with role check",
+      "prompt": "Write RLS policies for a `invoices` table: members can view, accountants and owners can create/update, only owners can delete. Use organization_members with role column.",
+      "checks": {
+        "mustIncludeAll": [
+          "organization_members",
+          "auth.uid()",
+          "role IN",
+          "FOR SELECT",
+          "FOR DELETE"
+        ],
+        "mustAvoid": [
+          "FOR ALL TO public",
+          "DISABLE ROW LEVEL SECURITY"
+        ]
+      },
+      "tags": ["rls", "roles", "org"]
+    },
+    {
+      "id": "database-schema-conventions",
+      "title": "Table with correct schema conventions",
+      "prompt": "Create the full migration SQL for a `subscriptions` table with soft delete, timestamps, a status check constraint, foreign key with CASCADE, and the updated_at trigger. Follow all schema conventions.",
+      "checks": {
+        "mustIncludeAll": [
+          "gen_random_uuid()",
+          "TIMESTAMPTZ",
+          "deleted_at",
+          "CHECK (status IN",
+          "ON DELETE CASCADE",
+          "update_updated_at_column"
+        ],
+        "mustAvoid": [
+          "SERIAL PRIMARY KEY",
+          "VARCHAR(255) for status",
+          "without trigger"
+        ]
+      },
+      "tags": ["schema", "migrations", "conventions"]
+    }
+  ]
+}

@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "defaultCadenceDays": 30,
+  "skills": [
+    {
+      "id": "accessibility",
+      "file": "skills/generic/accessibility/SKILL.md",
+      "owner": "@ui",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "api-design",
+      "file": "skills/generic/api-design/SKILL.md",
+      "owner": "@backend",
+      "cadenceDays": 30,
+      "lastVerified": "2026-08-06"
+    },
+    {
+      "id": "database",
+      "file": "skills/generic/database/SKILL.md",
+      "owner": "@backend",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "email",
+      "file": "skills/generic/email/SKILL.md",
+      "owner": "@backend",
+      "cadenceDays": 30,
+      "lastVerified": "2026-08-06"
+    },
+    {
+      "id": "hexagonal-architecture",
+      "file": "skills/generic/hexagonal-architecture/SKILL.md",
+      "owner": "@backend",
+      "cadenceDays": 30,
+      "lastVerified": "2026-08-06"
+    },
+    {
+      "id": "error-handling",
+      "file": "skills/generic/error-handling/SKILL.md",
+      "owner": "@backend",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "git-workflow",
+      "file": "skills/generic/git-workflow/SKILL.md",
+      "owner": "@maintainers",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "i18n",
+      "file": "skills/generic/i18n/SKILL.md",
+      "owner": "@ui",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "nextjs-core",
+      "file": "skills/generic/nextjs-core/SKILL.md",
+      "owner": "@backend",
+      "cadenceDays": 14,
+      "lastVerified": "2026-03-23",
+      "fileAssertions": [
+        "Skill Version:",
+        "Next.js 16.2",
+        "useActionState",
+        "Promise<{ id: string }>"
+      ],
+      "sources": [
+        {
+          "name": "Next.js releases",
+          "url": "https://github.com/vercel/next.js/releases",
+          "mustContainAny": [
+            "16.2.1",
+            "16.2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "performance",
+      "file": "skills/generic/performance/SKILL.md",
+      "owner": "@ui",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "prisma",
+      "file": "skills/generic/prisma/SKILL.md",
+      "owner": "@backend",
+      "cadenceDays": 14,
+      "lastVerified": "2026-03-31",
+      "fileAssertions": [
+        "Skill Version:",
+        "driverAdapters is GA",
+        "globalForPrisma",
+        "PrismaNeon"
+      ],
+      "sources": [
+        {
+          "name": "Prisma releases",
+          "url": "https://github.com/prisma/prisma/releases",
+          "mustContainAny": ["6.", "prisma@6"]
+        }
+      ]
+    },
+    {
+      "id": "react-native",
+      "file": "skills/generic/react-native/SKILL.md",
+      "owner": "@mobile",
+      "cadenceDays": 7,
+      "lastVerified": "2026-03-23",
+      "fileAssertions": [
+        "Skill Version:",
+        "React Native 0.84+",
+        "Expo SDK 55+"
+      ],
+      "sources": [
+        {
+          "name": "React Native versions",
+          "url": "https://reactnative.dev/versions",
+          "mustContainAny": [
+            "0.84",
+            "latest version"
+          ]
+        },
+        {
+          "name": "Expo changelog",
+          "url": "https://expo.dev/changelog",
+          "mustContainAny": [
+            "sdk 55",
+            "expo sdk 55"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "react-patterns",
+      "file": "skills/generic/react-patterns/SKILL.md",
+      "owner": "@ui",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "security",
+      "file": "skills/generic/security/SKILL.md",
+      "owner": "@backend",
+      "cadenceDays": 14,
+      "lastVerified": "2026-03-31",
+      "fileAssertions": [
+        "Skill Version: 2.1",
+        "X-XSS-Protection intentionally OMITTED",
+        "await headers()",
+        "Upstash",
+        "nonce"
+      ],
+      "sources": [
+        {
+          "name": "OWASP Secure Headers Project",
+          "url": "https://owasp.org/www-project-secure-headers/",
+          "mustContainAny": ["X-XSS-Protection", "Content-Security-Policy"]
+        },
+        {
+          "name": "Next.js CSP docs",
+          "url": "https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy",
+          "mustContainAny": ["nonce", "Content-Security-Policy"]
+        }
+      ]
+    },
+    {
+      "id": "seo",
+      "file": "skills/generic/seo/SKILL.md",
+      "owner": "@ui",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "state-management",
+      "file": "skills/generic/state-management/SKILL.md",
+      "owner": "@ui",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "testing",
+      "file": "skills/generic/testing/SKILL.md",
+      "owner": "@testing",
+      "cadenceDays": 14,
+      "lastVerified": "2026-03-17",
+      "fileAssertions": [
+        "Skill Version:",
+        "Vitest 4.x",
+        "maxWorkers",
+        "coverage.include"
+      ],
+      "sources": [
+        {
+          "name": "Vitest releases",
+          "url": "https://github.com/vitest-dev/vitest/releases",
+          "mustContainAny": ["vitest@4", "v4."]
+        }
+      ]
+    },
+    {
+      "id": "typescript",
+      "file": "skills/generic/typescript/SKILL.md",
+      "owner": "@maintainers",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "ui-engineering",
+      "file": "skills/generic/ui-engineering/SKILL.md",
+      "owner": "@ui",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "ux",
+      "file": "skills/generic/ux/SKILL.md",
+      "owner": "@ui",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "env-config",
+      "file": "skills/generic/env-config/SKILL.md",
+      "owner": "@backend",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-17",
+      "fileAssertions": [
+        "Skill Version:",
+        "Zod",
+        "lib/env.ts"
+      ]
+    },
+    {
+      "id": "project-setup",
+      "file": "skills/project-setup/SKILL.md",
+      "owner": "@maintainers",
+      "cadenceDays": 90,
+      "lastVerified": "2026-03-17"
+    },
+    {
+      "id": "skill-creator",
+      "file": "skills/skill-creator/SKILL.md",
+      "owner": "@maintainers",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "skill-sync",
+      "file": "skills/skill-sync/SKILL.md",
+      "owner": "@maintainers",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-13"
+    },
+    {
+      "id": "feedback-loop",
+      "file": "skills/feedback-loop/SKILL.md",
+      "owner": "@maintainers",
+      "cadenceDays": 30,
+      "lastVerified": "2026-03-17"
+    }
+  ]
+}

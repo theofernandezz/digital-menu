@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "skill": "api-design",
+  "cases": [
+    {
+      "id": "api-crud-resource",
+      "title": "REST CRUD endpoint with correct status codes",
+      "prompt": "Design a REST API for a `tasks` resource with list, create, update, and delete endpoints. Use correct HTTP methods, status codes, and consistent JSON response shape.",
+      "checks": {
+        "mustIncludeAll": [
+          "GET",
+          "POST",
+          "PATCH",
+          "DELETE",
+          "200",
+          "201",
+          "404"
+        ],
+        "mustAvoid": [
+          "POST for updates",
+          "200 for delete",
+          "500 for not found"
+        ]
+      },
+      "tags": ["rest", "crud", "status-codes"]
+    },
+    {
+      "id": "api-pagination",
+      "title": "Paginated list endpoint with cursor or offset",
+      "prompt": "Design a paginated GET /tasks endpoint. Include either cursor-based or offset pagination, with consistent metadata (total, nextCursor or page info) in the response.",
+      "checks": {
+        "mustIncludeAny": [
+          "cursor",
+          "nextCursor",
+          "offset",
+          "limit",
+          "total"
+        ],
+        "mustAvoid": [
+          "return all records",
+          "no pagination"
+        ]
+      },
+      "tags": ["pagination", "list", "performance"]
+    },
+    {
+      "id": "api-error-shape",
+      "title": "Consistent error response shape",
+      "prompt": "Define the error response shape for an API. Every error must have a code, message, and optional field-level errors. Show examples for validation errors, not-found, and unauthorized.",
+      "checks": {
+        "mustIncludeAll": [
+          "code",
+          "message",
+          "400",
+          "401",
+          "404"
+        ],
+        "mustAvoid": [
+          "different shapes per error",
+          "stack trace in response",
+          "internal error details"
+        ]
+      },
+      "tags": ["errors", "consistency", "schema"]
+    },
+    {
+      "id": "api-webhook-retry",
+      "title": "Idempotent webhook handler",
+      "prompt": "Implement a webhook handler that processes Stripe payment events. It must be idempotent (safe to receive duplicate events), verify the signature, and acknowledge receipt with 200 before processing.",
+      "checks": {
+        "mustIncludeAll": [
+          "idempotent",
+          "signature",
+          "200"
+        ],
+        "mustAvoid": [
+          "process before ack",
+          "no duplicate check",
+          "return 500 on duplicate"
+        ]
+      },
+      "tags": ["webhook", "idempotency", "stripe"]
+    },
+    {
+      "id": "api-versioning",
+      "title": "API versioning strategy",
+      "prompt": "Design a versioning strategy for a public REST API. Explain when to use URL versioning vs header versioning, and show how to deprecate v1 while supporting v2.",
+      "checks": {
+        "mustIncludeAny": [
+          "/v1/",
+          "/v2/",
+          "Accept-Version",
+          "deprecation"
+        ],
+        "mustAvoid": [
+          "no versioning",
+          "breaking change without version"
+        ]
+      },
+      "tags": ["versioning", "deprecation", "public-api"]
+    }
+  ]
+}

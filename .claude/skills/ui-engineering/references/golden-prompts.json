@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "skill": "ui-engineering",
+  "cases": [
+    {
+      "id": "ui-landing-bold-direction",
+      "title": "Landing redesign with explicit creative direction",
+      "prompt": "Redesign a SaaS landing page hero and feature section. Require a unique visual direction, do not use default font stacks, include specific references used for principles only, and provide motion decisions.",
+      "checks": {
+        "mustIncludeAll": [
+          "UI_DIRECTION",
+          "Intent:",
+          "Pillars:",
+          "Risky Choice:",
+          "Variation Proof:"
+        ],
+        "mustAvoid": [
+          "Inter, Roboto, Arial",
+          "copy 1:1",
+          "purple gradient"
+        ]
+      },
+      "tags": ["landing", "direction", "creativity"]
+    },
+    {
+      "id": "ui-dashboard-anti-slop",
+      "title": "Dashboard polish without generic patterns",
+      "prompt": "Create a dashboard overview page for B2B operations that looks intentional and non-generic. Include typography and color rationale, avoid symmetric card spam, and ensure action hierarchy is clear.",
+      "checks": {
+        "mustIncludeAny": [
+          "asymmetric",
+          "hierarchy",
+          "typography"
+        ],
+        "mustAvoid": [
+          "generic hero",
+          "centered everything"
+        ]
+      },
+      "tags": ["dashboard", "hierarchy"]
+    },
+    {
+      "id": "ui-accessibility-guardrail",
+      "title": "Bold design with accessibility guardrails",
+      "prompt": "Design a visually bold pricing section and include explicit usability guardrails for contrast, keyboard focus, and readable content hierarchy.",
+      "checks": {
+        "mustIncludeAny": [
+          "Usability Guardrail",
+          "contrast",
+          "keyboard"
+        ],
+        "mustAvoid": [
+          "style over usability"
+        ]
+      },
+      "tags": ["accessibility", "pricing"]
+    },
+    {
+      "id": "ui-reference-balance",
+      "title": "Balanced references without cloning",
+      "prompt": "Provide a UI concept for a product onboarding flow that uses exactly two references: one for structure and one for visual language. Explain what is borrowed and what is intentionally different.",
+      "checks": {
+        "mustIncludeAny": [
+          "References:",
+          "structure",
+          "visual"
+        ],
+        "mustAvoid": [
+          "clone",
+          "copy layout"
+        ]
+      },
+      "tags": ["references", "onboarding"]
+    },
+    {
+      "id": "ui-mobile-desktop-consistency",
+      "title": "Cross-breakpoint design consistency",
+      "prompt": "Design a marketing section that works on desktop and mobile with intentional spacing rhythm and non-flat backgrounds. Explain breakpoint behavior and motion fallback.",
+      "checks": {
+        "mustIncludeAny": [
+          "mobile",
+          "desktop",
+          "breakpoint"
+        ],
+        "mustAvoid": [
+          "single-color background only"
+        ]
+      },
+      "tags": ["responsive", "motion", "layout"]
+    }
+  ]
+}

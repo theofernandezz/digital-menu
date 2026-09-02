@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "skill": "nextjs-core",
+  "cases": [
+    {
+      "id": "nextjs-no-useeffect-fetch",
+      "title": "Data fetching without useEffect",
+      "prompt": "Create a user profile page that loads user data and their recent posts. The page lives at /users/[id]. Show how to fetch data correctly without useEffect or API routes.",
+      "checks": {
+        "mustIncludeAll": [
+          "async function",
+          "await",
+          "Suspense"
+        ],
+        "mustAvoid": [
+          "useEffect",
+          "fetch('/api/",
+          "useState",
+          "setLoading"
+        ]
+      },
+      "tags": ["server-component", "data-fetching", "streaming"]
+    },
+    {
+      "id": "nextjs-server-action-mutation",
+      "title": "Server Action with validation and revalidation",
+      "prompt": "Create a Server Action to create a task. It must validate inputs with Zod, check auth, return typed field errors, and revalidate the task list after success. Show the full action and the form component.",
+      "checks": {
+        "mustIncludeAll": [
+          "'use server'",
+          "safeParse",
+          "revalidatePath",
+          "useActionState"
+        ],
+        "mustAvoid": [
+          "useFormState",
+          "fetch('/api/",
+          "useEffect",
+          "any"
+        ]
+      },
+      "tags": ["server-action", "forms", "validation"]
+    },
+    {
+      "id": "nextjs-no-internal-api-route",
+      "title": "Reject internal API route pattern",
+      "prompt": "A developer wants to create an API route at /api/tasks to fetch tasks from a dashboard page. Show why this is wrong and the correct pattern using Server Components.",
+      "checks": {
+        "mustIncludeAll": [
+          "Server Component",
+          "async function",
+          "lib/data"
+        ],
+        "mustAvoid": [
+          "export async function GET",
+          "fetch('/api/tasks')",
+          "route.ts for internal"
+        ]
+      },
+      "tags": ["anti-pattern", "api-routes", "server-component"]
+    },
+    {
+      "id": "nextjs-parallel-data-fetching",
+      "title": "Parallel vs sequential data fetching",
+      "prompt": "A dashboard page needs user info, stats, and recent activity — all independent. Show the wrong sequential pattern, then the correct parallel pattern, then the best pattern with streaming Suspense.",
+      "checks": {
+        "mustIncludeAll": [
+          "Promise.all",
+          "Suspense",
+          "fallback"
+        ],
+        "mustAvoid": [
+          "await user\n  const stats = await",
+          "useEffect"
+        ]
+      },
+      "tags": ["performance", "parallel", "streaming"]
+    },
+    {
+      "id": "nextjs-route-groups-auth",
+      "title": "Auth guard with route groups",
+      "prompt": "Set up an app with a public marketing section and an authenticated app section. Show the route group structure, the auth layout guard, and how middleware refreshes the session.",
+      "checks": {
+        "mustIncludeAll": [
+          "(marketing)",
+          "(app)",
+          "redirect",
+          "middleware"
+        ],
+        "mustAvoid": [
+          "if (user) return <Component />",
+          "client-side auth check"
+        ]
+      },
+      "tags": ["auth", "route-groups", "middleware"]
+    }
+  ]
+}

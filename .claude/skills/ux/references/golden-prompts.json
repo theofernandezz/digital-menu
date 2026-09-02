@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "skill": "ux",
+  "cases": [
+    {
+      "id": "ux-crud-services-flow",
+      "title": "CRUD services dashboard flow",
+      "prompt": "Design UX for a services dashboard where users add, edit, delete services. Require safe deletion, clear primary action, and full state coverage.",
+      "checks": {
+        "mustIncludeAll": [
+          "UX_CRITERIA",
+          "Primary user goal",
+          "Risky actions requiring safeguards"
+        ],
+        "mustIncludeAny": [
+          "Empty state",
+          "Loading state",
+          "Error state",
+          "Success feedback"
+        ],
+        "mustAvoid": [
+          "one-click delete",
+          "generic error"
+        ]
+      },
+      "tags": ["crud", "dashboard", "safety"]
+    },
+    {
+      "id": "ux-form-validation-timing",
+      "title": "Validation timing and field-level feedback",
+      "prompt": "Create a form UX plan for editing a service with required and format validations. Specify when to validate and where to place messages.",
+      "checks": {
+        "mustIncludeAny": [
+          "on submit",
+          "on blur",
+          "field-specific"
+        ],
+        "mustAvoid": [
+          "validate everything on first keystroke"
+        ]
+      },
+      "tags": ["forms", "validation"]
+    },
+    {
+      "id": "ux-empty-state-recovery",
+      "title": "Actionable empty and error states",
+      "prompt": "Design empty and error states for a list page where API failures are common. Require retry options and clear next actions.",
+      "checks": {
+        "mustIncludeAny": [
+          "retry",
+          "next step",
+          "CTA"
+        ],
+        "mustAvoid": [
+          "Error occurred"
+        ]
+      },
+      "tags": ["states", "recovery"]
+    },
+    {
+      "id": "ux-fast-safe-path",
+      "title": "Fast path and safe path",
+      "prompt": "For a high-frequency admin task, propose both a fast path for common edits and a safe path for destructive operations.",
+      "checks": {
+        "mustIncludeAny": [
+          "Fast path",
+          "Safe path",
+          "confirmation"
+        ],
+        "mustAvoid": [
+          "destructive action without confirmation"
+        ]
+      },
+      "tags": ["efficiency", "safety"]
+    },
+    {
+      "id": "ux-copy-quality",
+      "title": "Action-oriented UX copy",
+      "prompt": "Write UX copy guidelines for buttons, empty states, and errors in a dashboard product.",
+      "checks": {
+        "mustIncludeAny": [
+          "action verbs",
+          "cause + next step",
+          "useful CTA"
+        ],
+        "mustAvoid": [
+          "Submit",
+          "Okay",
+          "Error"
+        ]
+      },
+      "tags": ["copy", "dashboard"]
+    }
+  ]
+}
