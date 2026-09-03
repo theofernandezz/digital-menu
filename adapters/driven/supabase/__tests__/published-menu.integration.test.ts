@@ -129,12 +129,17 @@ describe("published menu (integration)", () => {
   });
 
   it("returns null, not a partial menu, once the restaurant is unpublished", async () => {
+    // instagram/whatsapp are omitted-means-cleared in the use case — pass
+    // the restaurant's real current values through, or this wipes them on
+    // the shared seeded restaurant.
     await updateRestaurantUseCase(adminClient).execute({
       restaurantId: restaurant.id,
       name: restaurant.name,
       slug: restaurant.slug,
       description: restaurant.description,
       isPublished: false,
+      instagram: restaurant.instagram,
+      whatsapp: restaurant.whatsapp,
     });
 
     const menuAfterUnpublish = await getPublishedMenuUseCase(anonClient).execute();
@@ -146,6 +151,8 @@ describe("published menu (integration)", () => {
       slug: restaurant.slug,
       description: restaurant.description,
       isPublished: true,
+      instagram: restaurant.instagram,
+      whatsapp: restaurant.whatsapp,
     });
   });
 });
