@@ -33,6 +33,7 @@ export function RestaurantSettingsForm({ restaurant }: RestaurantSettingsFormPro
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="restaurantId" value={restaurant.id} />
       <input type="hidden" name="isPublished" value={restaurant.isPublished ? "on" : ""} />
+      <p className="font-sans text-xs uppercase tracking-[0.2em] text-ink-muted">Restaurante</p>
       <div>
         <Label htmlFor="name">Nombre</Label>
         <Input
@@ -73,6 +74,34 @@ export function RestaurantSettingsForm({ restaurant }: RestaurantSettingsFormPro
           aria-describedby={state.errors?.description ? "settings-description-error" : undefined}
         />
         <FieldError id="settings-description-error" message={state.errors?.description?.[0]} />
+      </div>
+      <p className="pt-2 font-sans text-xs uppercase tracking-[0.2em] text-ink-muted">Contacto</p>
+      <div>
+        <Label htmlFor="instagram">Instagram</Label>
+        <Input
+          id="instagram"
+          name="instagram"
+          defaultValue={restaurant.instagram ?? ""}
+          placeholder="@mi_restaurante"
+          className="mt-1.5"
+          aria-invalid={!!state.errors?.instagram}
+          aria-describedby={state.errors?.instagram ? "settings-instagram-error" : undefined}
+        />
+        <FieldError id="settings-instagram-error" message={state.errors?.instagram?.[0]} />
+      </div>
+      <div>
+        <Label htmlFor="whatsapp">WhatsApp</Label>
+        <Input
+          id="whatsapp"
+          name="whatsapp"
+          type="tel"
+          defaultValue={restaurant.whatsapp ?? ""}
+          placeholder="+54 9 11 1234-5678"
+          className="mt-1.5"
+          aria-invalid={!!state.errors?.whatsapp}
+          aria-describedby={state.errors?.whatsapp ? "settings-whatsapp-error" : undefined}
+        />
+        <FieldError id="settings-whatsapp-error" message={state.errors?.whatsapp?.[0]} />
       </div>
       <FieldError id="settings-form-error" message={state.errors?._form?.[0]} />
       <Button type="submit" disabled={isPending}>

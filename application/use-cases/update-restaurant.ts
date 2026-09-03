@@ -17,6 +17,8 @@ export const restaurantSchema = z.object({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase letters, numbers, and hyphens"),
   description: z.string().max(1000).trim().nullable().optional(),
   isPublished: z.boolean(),
+  instagram: z.string().max(200).trim().nullable().optional(),
+  whatsapp: z.string().max(50).trim().nullable().optional(),
 });
 export type RestaurantInput = z.infer<typeof restaurantSchema>;
 
@@ -41,6 +43,8 @@ export class UpdateRestaurantUseCase {
       slug: input.slug,
       description: input.description ?? null,
       isPublished: input.isPublished,
+      instagram: input.instagram ?? null,
+      whatsapp: input.whatsapp ?? null,
     });
 
     return this.repo.save(restaurant);

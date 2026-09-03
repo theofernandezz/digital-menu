@@ -70,6 +70,8 @@ export function PublishToggle({ restaurant }: PublishToggleProps): React.JSX.Ele
               <input type="hidden" name="name" value={restaurant.name} />
               <input type="hidden" name="slug" value={restaurant.slug} />
               <input type="hidden" name="description" value={restaurant.description ?? ""} />
+              <input type="hidden" name="instagram" value={restaurant.instagram ?? ""} />
+              <input type="hidden" name="whatsapp" value={restaurant.whatsapp ?? ""} />
               {/* isPublished intentionally omitted — absence means false */}
               <FieldError id="unpublish-error" message={errors?._form?.[0]} />
               <div className="flex justify-end gap-3">
@@ -91,6 +93,8 @@ export function PublishToggle({ restaurant }: PublishToggleProps): React.JSX.Ele
           <input type="hidden" name="name" value={restaurant.name} />
           <input type="hidden" name="slug" value={restaurant.slug} />
           <input type="hidden" name="description" value={restaurant.description ?? ""} />
+          <input type="hidden" name="instagram" value={restaurant.instagram ?? ""} />
+          <input type="hidden" name="whatsapp" value={restaurant.whatsapp ?? ""} />
           <Button type="submit">Publicar</Button>
         </form>
       )}

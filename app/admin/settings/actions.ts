@@ -22,6 +22,8 @@ export async function updateRestaurantAction(
       name: formData.get("name"),
       slug: formData.get("slug"),
       description: formData.get("description") || null,
+      instagram: formData.get("instagram") || null,
+      whatsapp: formData.get("whatsapp") || null,
       // Unchecked checkbox sends no key — presence means published.
       isPublished: formData.get("isPublished") !== null,
     });
@@ -46,6 +48,8 @@ export async function publishRestaurantAction(formData: FormData): Promise<void>
     name: formData.get("name"),
     slug: formData.get("slug"),
     description: formData.get("description") || null,
+    instagram: formData.get("instagram") || null,
+    whatsapp: formData.get("whatsapp") || null,
     isPublished: true,
   });
 

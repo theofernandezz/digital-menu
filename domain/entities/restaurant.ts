@@ -9,6 +9,8 @@ export type RestaurantProps = {
   slug: string;
   description: string | null;
   isPublished: boolean;
+  instagram: string | null;
+  whatsapp: string | null;
 };
 
 export class Restaurant {
@@ -44,7 +46,17 @@ export class Restaurant {
     return this.props.isPublished;
   }
 
-  withUpdate(patch: Partial<Pick<RestaurantProps, "name" | "slug" | "description" | "isPublished">>): Restaurant {
+  get instagram(): string | null {
+    return this.props.instagram;
+  }
+
+  get whatsapp(): string | null {
+    return this.props.whatsapp;
+  }
+
+  withUpdate(
+    patch: Partial<Pick<RestaurantProps, "name" | "slug" | "description" | "isPublished" | "instagram" | "whatsapp">>,
+  ): Restaurant {
     return Restaurant.create({ ...this.props, ...patch });
   }
 }

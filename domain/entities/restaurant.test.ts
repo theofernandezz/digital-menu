@@ -9,6 +9,8 @@ const validProps = {
   slug: "demo-restaurant",
   description: null,
   isPublished: true,
+  instagram: null,
+  whatsapp: null,
 };
 
 describe("Restaurant", () => {
@@ -37,5 +39,12 @@ describe("Restaurant", () => {
     const restaurant = Restaurant.create(validProps);
     const unpublished = restaurant.withUpdate({ isPublished: false });
     expect(unpublished.isPublished).toBe(false);
+  });
+
+  it("withUpdate can set instagram and whatsapp", () => {
+    const restaurant = Restaurant.create(validProps);
+    const updated = restaurant.withUpdate({ instagram: "@demo", whatsapp: "+5491100000000" });
+    expect(updated.instagram).toBe("@demo");
+    expect(updated.whatsapp).toBe("+5491100000000");
   });
 });

@@ -13,6 +13,8 @@ export type RestaurantViewModel = {
   slug: string;
   description: string | null;
   isPublished: boolean;
+  instagram: string | null;
+  whatsapp: string | null;
 };
 
 export function toRestaurantViewModel(restaurant: Restaurant): RestaurantViewModel {
@@ -22,6 +24,8 @@ export function toRestaurantViewModel(restaurant: Restaurant): RestaurantViewMod
     slug: restaurant.slug,
     description: restaurant.description,
     isPublished: restaurant.isPublished,
+    instagram: restaurant.instagram,
+    whatsapp: restaurant.whatsapp,
   };
 }
 
