@@ -25,5 +25,12 @@ export default defineConfig({
     // tests assert on. A slower, correct sequential setup beats a faster
     // one with a chance of flaking on the very thing being tested.
     hookTimeout: 30000,
+    // Same reason as hookTimeout above: individual real round-trips (not
+    // just beforeAll setup) can also exceed Vitest's 5000ms default under a
+    // CI runner slower to reach Supabase than local Docker Desktop — seen
+    // directly: "lists the created item" (a single real network call) timed
+    // out post-merge on main even though it passed locally and on the PR's
+    // own CI run moments earlier.
+    testTimeout: 15000,
   },
 });
