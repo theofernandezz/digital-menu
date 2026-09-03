@@ -5,9 +5,23 @@ on:
     branches: [main]
   pull_request:
 
+# Integration + e2e sign in as the SAME real admin account against the SAME
+# real Supabase project (see the note on the `test` job below). Two runs for
+# the same ref overlapping in time race each other's signInWithPassword and
+# category/item fixtures — cancel the older one instead of letting both hit
+# Supabase concurrently.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Merges docker-compose.ci.yml into every `docker compose` call below —
+    # overrides the app service to run webpack instead of Turbopack. See
+    # docker-compose.ci.yml for why.
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.ci.yml
     # One job, sequential steps — not a matrix, not parallel jobs. Both
     # vitest.integration.config.ts (fileParallelism: false) and
     # playwright.config.ts (fullyParallel: false) exist specifically because
@@ -71,20 +85,6 @@ jobs:
           done
           echo "App never responded on :3000" >&2
           exit 1
-
-      # Next dev/Turbopack compiles each route on its first hit, CSS
-      # pipeline included. The readiness check above only warms `/` — the
-      # first real hit to /login or /admin during the timed Playwright run
-      # occasionally lost that compile race under CI's resource pressure
-      # (`Can't resolve 'tailwindcss'`, a transient 500 on a cold route, not
-      # a product bug: identical code passed on a rerun). Pre-warming here,
-      # outside the timed e2e run, means a retry (see playwright.config.ts's
-      # CI-only retries) hits an already-compiled route instead of racing
-      # the same cold compile again.
-      - name: Pre-warm dev-compiled routes
-        run: |
-          curl -sf http://localhost:3000/login > /dev/null || true
-          curl -sf http://localhost:3000/admin > /dev/null || true
 
       - name: Type-check (in container)
         run: docker compose exec -T app pnpm exec tsc --noEmit

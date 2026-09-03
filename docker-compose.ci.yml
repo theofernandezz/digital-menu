@@ -1,0 +1,10 @@
+services:
+  app:
+    # Turbopack's CSS pipeline (postcss evaluated in a child process) times
+    # out intermittently under GitHub Actions' constrained runner resources
+    # — a known, unresolved upstream issue (Turbopack + Tailwind CSS in CI:
+    # https://github.com/vercel/next.js/discussions/84495), not a bug in
+    # this app. Webpack doesn't use that child-process CSS evaluation model,
+    # so it isn't affected. CI only — local dev keeps Turbopack via the
+    # Dockerfile's default `pnpm dev`.
+    command: pnpm dev --webpack
