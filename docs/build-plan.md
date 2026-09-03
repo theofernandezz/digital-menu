@@ -178,4 +178,15 @@ real runner. DB confirmed back in its original seeded state after every run
 (including the failed ones along the way) via the service-role key. PR #1
 squash-merged into `main` (`0b1688e`).
 
+**One more flaky-CI bug (2026-09-03), same shape as `hookTimeout` above but
+never extended to individual tests:** merging PR #3 triggered a second CI
+run on `main` (on top of the PR's own, already-green run) that failed —
+`lists the created item` timed out at Vitest's default 5000ms making one
+real round-trip to Supabase, despite passing locally and in the PR's run
+minutes earlier. `hookTimeout` was raised to 30000 for slow `beforeAll`
+fixture setup when this pipeline was first built, but `testTimeout` (an
+individual `it()`, not setup) was never touched — same root cause, same
+fix: `testTimeout: 15000` in `vitest.integration.config.ts`. 23/23 still
+green locally afterward.
+
 ## 7. [ ] Stretch: multi-tenant
