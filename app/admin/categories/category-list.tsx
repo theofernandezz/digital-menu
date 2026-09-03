@@ -17,14 +17,14 @@ export function CategoryList({ categories }: CategoryListProps): React.JSX.Eleme
       {categories.map((category, index) => (
         <li key={category.id}>
           {index > 0 && <Rule />}
-          <div className="flex flex-wrap items-center justify-between gap-4 py-4">
+          <div className="flex flex-col gap-3 py-4">
             <div>
               <p className="font-sans text-base font-medium text-ink">{category.name}</p>
               {category.description && (
                 <p className="mt-0.5 font-sans text-sm text-ink-muted">{category.description}</p>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <EditCategoryDialog category={category} />
               <DeleteCategoryDialog category={category} />
             </div>

@@ -7,6 +7,8 @@ import type { PublishedMenu } from "@/application/use-cases/get-published-menu";
 const menu: PublishedMenu = {
   restaurantName: "Demo Restaurant",
   restaurantDescription: null,
+  restaurantInstagram: null,
+  restaurantWhatsapp: null,
   categories: [
     {
       id: "cat-1",

@@ -42,6 +42,8 @@ describe("GetPublishedMenuUseCase", () => {
         slug: "demo-restaurant",
         description: null,
         isPublished: true,
+        instagram: null,
+        whatsapp: null,
       }),
     );
     categoryRepo.seed(
@@ -66,11 +68,34 @@ describe("GetPublishedMenuUseCase", () => {
     const menu = await useCase.execute();
 
     expect(menu?.restaurantName).toBe("Demo Restaurant");
+    expect(menu?.restaurantInstagram).toBeNull();
+    expect(menu?.restaurantWhatsapp).toBeNull();
     expect(menu?.categories).toHaveLength(1);
     expect(menu?.categories[0]?.items).toHaveLength(1);
     const item = menu?.categories[0]?.items[0];
     expect(item?.isAvailable).toBe(false); // still shows, just flagged
     expect(item?.tags).toEqual(["Spicy"]);
+  });
+
+  it("passes through the restaurant's instagram and whatsapp", async () => {
+    const { useCase, restaurantRepo } = makeUseCase();
+    restaurantRepo.seed(
+      Restaurant.create({
+        id: FAKE_RESTAURANT_ID,
+        ownerId: FAKE_USER_ID,
+        name: "Demo Restaurant",
+        slug: "demo-restaurant",
+        description: null,
+        isPublished: true,
+        instagram: "@demo",
+        whatsapp: "+5491100000000",
+      }),
+    );
+
+    const menu = await useCase.execute();
+
+    expect(menu?.restaurantInstagram).toBe("@demo");
+    expect(menu?.restaurantWhatsapp).toBe("+5491100000000");
   });
 
   it("gives every menu item an empty tags array, never undefined, when it has no tags", async () => {
@@ -83,6 +108,8 @@ describe("GetPublishedMenuUseCase", () => {
         slug: "demo-restaurant",
         description: null,
         isPublished: true,
+        instagram: null,
+        whatsapp: null,
       }),
     );
     categoryRepo.seed(

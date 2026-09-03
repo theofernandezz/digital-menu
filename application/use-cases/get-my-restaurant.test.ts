@@ -20,6 +20,8 @@ describe("GetMyRestaurantUseCase", () => {
         slug: "demo-restaurant",
         description: null,
         isPublished: true,
+        instagram: null,
+        whatsapp: null,
       }),
     );
     const useCase = new GetMyRestaurantUseCase(repo, new FakeAuthProvider());

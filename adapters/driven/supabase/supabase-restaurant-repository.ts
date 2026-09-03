@@ -12,6 +12,8 @@ type RestaurantRow = {
   slug: string;
   description: string | null;
   is_published: boolean;
+  instagram: string | null;
+  whatsapp: string | null;
   created_at: string;
 };
 
@@ -23,6 +25,8 @@ function toEntity(row: RestaurantRow): Restaurant {
     slug: row.slug,
     description: row.description,
     isPublished: row.is_published,
+    instagram: row.instagram ?? null,
+    whatsapp: row.whatsapp ?? null,
   });
 }
 
@@ -63,6 +67,8 @@ export class SupabaseRestaurantRepository implements RestaurantRepository {
       slug: restaurant.slug,
       description: restaurant.description,
       is_published: restaurant.isPublished,
+      instagram: restaurant.instagram,
+      whatsapp: restaurant.whatsapp,
     };
 
     const { data, error } = await this.client.from("restaurants").upsert(row).select("*").single();

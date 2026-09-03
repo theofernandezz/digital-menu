@@ -5,6 +5,8 @@ create table restaurants (
   slug text not null unique,
   description text,
   is_published boolean not null default true,
+  instagram text,
+  whatsapp text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

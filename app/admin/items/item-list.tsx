@@ -38,7 +38,7 @@ export function MenuItemList({ items, categories }: MenuItemListProps): React.JS
               {itemsByCategory.get(category.id)!.map((item, index) => (
                 <li key={item.id}>
                   {index > 0 && <Rule />}
-                  <div className="flex flex-wrap items-center justify-between gap-4 py-4">
+                  <div className="flex flex-col gap-3 py-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-sans text-base font-medium text-ink">{item.name}</p>
@@ -52,6 +52,10 @@ export function MenuItemList({ items, categories }: MenuItemListProps): React.JS
                       )}
                       <Price value={item.price} className="mt-1 block" />
                     </div>
+                    {/* Always its own row below, regardless of how short/long the
+                        info above is — flex-wrap on a single row let the buttons
+                        land beside short content and below long content,
+                        inconsistently from item to item. */}
                     <div className="flex flex-wrap items-center gap-3">
                       <AvailabilityToggleForm item={item} />
                       <EditMenuItemDialog item={item} categories={categories} tags={item.tags} />

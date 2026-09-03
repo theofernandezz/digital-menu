@@ -53,12 +53,18 @@ describe("menu_items + restaurant (integration)", () => {
   });
 
   it("updates the restaurant and round-trips the description", async () => {
+    // instagram/whatsapp are omitted-means-cleared in the use case (same
+    // whole-object-overwrite contract as every field here) — pass the
+    // restaurant's real current values through both calls, or this wipes
+    // them on the shared seeded restaurant instead of leaving it untouched.
     const updated = await updateRestaurantUseCase(adminClient).execute({
       restaurantId: restaurant.id,
       name: restaurant.name,
       slug: restaurant.slug,
       description: "Updated by the integration test",
       isPublished: restaurant.isPublished,
+      instagram: restaurant.instagram,
+      whatsapp: restaurant.whatsapp,
     });
     expect(updated.description).toBe("Updated by the integration test");
 
@@ -69,6 +75,8 @@ describe("menu_items + restaurant (integration)", () => {
       slug: restaurant.slug,
       description: restaurant.description,
       isPublished: restaurant.isPublished,
+      instagram: restaurant.instagram,
+      whatsapp: restaurant.whatsapp,
     });
   });
 

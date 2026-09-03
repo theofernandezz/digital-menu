@@ -25,6 +25,8 @@ export type PublishedMenuCategory = {
 export type PublishedMenu = {
   restaurantName: string;
   restaurantDescription: string | null;
+  restaurantInstagram: string | null;
+  restaurantWhatsapp: string | null;
   categories: PublishedMenuCategory[];
 };
 
@@ -71,6 +73,8 @@ export class GetPublishedMenuUseCase {
     return {
       restaurantName: restaurant.name,
       restaurantDescription: restaurant.description,
+      restaurantInstagram: restaurant.instagram,
+      restaurantWhatsapp: restaurant.whatsapp,
       categories: categories.map((category) => ({
         id: category.id,
         name: category.name,
