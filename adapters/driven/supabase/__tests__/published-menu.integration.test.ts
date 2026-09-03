@@ -98,26 +98,34 @@ describe("published menu (integration)", () => {
     expect(menu?.restaurantName).toBe(restaurant.name);
   });
 
+  // Looked up by id, not array index — the shared restaurant can (and now
+  // does) hold other real categories/items alongside this fixture's own;
+  // see docs/build-plan.md step 5, bug #1 for the same fix applied to
+  // categories.integration.test.ts's displayOrder assertion.
   it("nests items under their category, both ordered by displayOrder", () => {
-    expect(menu?.categories).toHaveLength(2);
-    expect(menu?.categories[0]?.name).toBe("Starters");
-    expect(menu?.categories[1]?.name).toBe("Mains");
-    expect(menu?.categories[0]?.items).toHaveLength(1);
-    expect(menu?.categories[1]?.items).toHaveLength(2);
-    expect(menu?.categories[1]?.items[0]?.name).toBe("Milanesa");
+    const startersInMenu = menu?.categories.find((c) => c.id === starters.id);
+    const mainsInMenu = menu?.categories.find((c) => c.id === mains.id);
+    expect(startersInMenu?.name).toBe("Starters");
+    expect(mainsInMenu?.name).toBe("Mains");
+    expect(startersInMenu?.items).toHaveLength(1);
+    expect(mainsInMenu?.items).toHaveLength(2);
+    expect(mainsInMenu?.items[0]?.name).toBe("Milanesa");
   });
 
   it("still shows a sold-out item — isAvailable does not gate visibility", () => {
-    const soldOutInMenu = menu?.categories[1]?.items.find((i) => i.name === "Sold Out Special");
+    const mainsInMenu = menu?.categories.find((c) => c.id === mains.id);
+    const soldOutInMenu = mainsInMenu?.items.find((i) => i.name === "Sold Out Special");
     expect(soldOutInMenu).toBeDefined();
     expect(soldOutInMenu?.isAvailable).toBe(false);
   });
 
   it("nests tags per item, and gives untagged items an empty array, not undefined", () => {
-    const empanadasInMenu = menu?.categories[0]?.items[0];
+    const startersInMenu = menu?.categories.find((c) => c.id === starters.id);
+    const mainsInMenu = menu?.categories.find((c) => c.id === mains.id);
+    const empanadasInMenu = startersInMenu?.items[0];
     expect(new Set(empanadasInMenu?.tags).size).toBe(2);
     expect(empanadasInMenu?.tags).toEqual(expect.arrayContaining(["Spicy", "Popular"]));
-    expect(menu?.categories[1]?.items[0]?.tags).toEqual([]);
+    expect(mainsInMenu?.items[0]?.tags).toEqual([]);
   });
 
   it("returns null, not a partial menu, once the restaurant is unpublished", async () => {
