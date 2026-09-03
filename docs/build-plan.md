@@ -121,10 +121,43 @@ assertion, and `SupabaseAuthProvider` conflating a failed session check with
 genuine unauthorized) — both only showed up under CI's slower, less
 forgiving network path to Supabase, not locally.
 
+**Two more CI-only bugs found the next day, decomposed from a single messy
+red run into two unrelated causes:**
+
+4. **No concurrency guard — overlapping runs raced each other against the
+   same live Supabase project.** Two runs for the same ref, pushed ~23s
+   apart during debugging, ran fully overlapped (confirmed via run
+   timestamps). Both integration test files sign in as the same real admin
+   account and write fixtures against the same real Supabase project;
+   running two at once reintroduced the exact race `fileParallelism: false`
+   was meant to prevent, just one level up (two CI jobs, not two files in
+   one job). Symptoms: `published-menu.integration.test.ts` counting a
+   category created by the *other* run, and a `signInWithPassword` race
+   producing a genuine `UnauthorizedError`. Fixed with a `concurrency` group
+   in `ci.yml` (`ci-${{ github.workflow }}-${{ github.ref }}`,
+   `cancel-in-progress: true`) that cancels the older run instead of letting
+   both hit Supabase concurrently.
+5. **Turbopack's CSS pipeline timing out under CI's constrained resources —
+   a known, unresolved upstream bug, not a per-test race.** `next dev`
+   intermittently 500'd on `/login` with `Can't resolve 'tailwindcss'`,
+   repeatedly, for minutes at a time — not a one-shot lost race, so the
+   `Pre-warm dev-compiled routes` step and Playwright's CI-only retries
+   added the day before (both since removed) never actually fixed it, they
+   just kept re-hitting the same poisoned dev server. Confirmed as a known
+   Turbopack issue via
+   [next.js discussion #84495](https://github.com/vercel/next.js/discussions/84495):
+   Turbopack evaluates PostCSS in a child process, and that inter-process
+   call times out under constrained CI runners. Fixed by running webpack
+   instead of Turbopack in CI only — `docker-compose.ci.yml` overrides the
+   `app` service's command to `pnpm dev --webpack`, merged in via
+   `COMPOSE_FILE` at the job level; local dev keeps Turbopack unchanged.
+
 **Verified**: PR #1 (`ci/github-actions-pipeline` → `main`), full pipeline
-green on GitHub Actions after the fixes above — `tsc`, `eslint`, 101 unit,
-23 integration, 1 e2e, all passing on the real runner. DB confirmed back in
-its original seeded state after every run (including the failed ones along
-the way) via the service-role key.
+green on GitHub Actions after all the fixes above (run
+[33790107851](https://github.com/theofernandezz/digital-menu/actions/runs/33790107851),
+3m10s) — `tsc`, `eslint`, 101 unit, 23 integration, 1 e2e, all passing on the
+real runner. DB confirmed back in its original seeded state after every run
+(including the failed ones along the way) via the service-role key. PR #1
+squash-merged into `main` (`0b1688e`).
 
 ## 7. [ ] Stretch: multi-tenant
