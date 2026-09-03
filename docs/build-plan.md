@@ -61,6 +61,8 @@ Both admin UI and public menu are now fully built (frontend session's whole dele
 
 `components/{molecules,organisms}/*.test.tsx` grew from 101 to 124 tests covering all of the above. `tsc`/`eslint` clean throughout (2 known `@next/next/no-img-element` warnings, left in deliberately: admins can set arbitrary external image URLs, so `next/image`'s per-domain whitelist doesn't fit this field).
 
+**One more CI-only bug, same root cause as step 5's bug #1, in a file that was never fixed for it:** seeding the realistic 21-item menu above broke `published-menu.integration.test.ts` in CI — `expected [...] to have a length of 2 but got 9`. That test's own fixture (a "Starters"/"Mains" category pair) indexed the published menu's `categories` array by position (`menu?.categories[0]`/`[1]`), assuming it was the only data in the restaurant. It always was, until this session added permanent categories to the same shared restaurant. Fixed the same way `categories.integration.test.ts` was fixed for the equivalent bug: look up `starters`/`mains` by id (`menu?.categories.find(c => c.id === starters.id)`) instead of by index, so the assertions hold regardless of what else is in the shared restaurant. 23/23 integration tests green against the live DB afterward.
+
 ## 5. [x] Tests (unit + integration + one e2e)
 
 Owned entirely by this session (not split with `frontend`) — same person who wrote every `domain`/`application`/`adapters` file writes their tests, no context handoff.
