@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Integration + e2e sign in as the SAME real admin account against the SAME
+# real Supabase project (see the note on the `test` job below). Two runs for
+# the same ref overlapping in time race each other's signInWithPassword and
+# category/item fixtures — cancel the older one instead of letting both hit
+# Supabase concurrently.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Merges docker-compose.ci.yml into every `docker compose` call below —
+    # overrides the app service to run webpack instead of Turbopack. See
+    # docker-compose.ci.yml for why.
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.ci.yml
+    # One job, sequential steps — not a matrix, not parallel jobs. Both
+    # vitest.integration.config.ts (fileParallelism: false) and
+    # playwright.config.ts (fullyParallel: false) exist specifically because
+    # integration + e2e sign in as the SAME real admin account against the
+    # SAME real Supabase project; running them in concurrent CI jobs would
+    # reintroduce the exact race those settings were added to avoid.
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Dockerfile runs the container as `node` (uid 1000), and
+      # docker-compose.yml bind-mounts the whole repo over /app. On macOS
+      # Docker Desktop that bind mount is permissive regardless of uid, so
+      # this never showed up locally — on this Linux runner the checkout is
+      # owned by the runner's own uid, `node` can't write into it, and
+      # `pnpm dev` died with `EACCES: permission denied, mkdir
+      # '/app/.next/dev'` (confirmed via the container-logs dump on a failed
+      # run). node_modules isn't affected (docker-compose.yml gives it its
+      # own anonymous volume, seeded from the image), just the bind-mounted
+      # source tree.
+      #
+      # chmod, not chown: a `chown -R 1000:1000` (tried first) transfers
+      # ownership away from the runner's own user, which then can't write
+      # .env.local a few steps below. Opening permissions for everyone
+      # keeps both the runner and the container's node user able to write —
+      # fine for a throwaway CI checkout.
+      - name: Allow the container's node user to write into the checkout
+        run: sudo chmod -R a+rwX .
+
+      # Written from secrets, never committed. docker-compose.yml reads this
+      # via env_file, and playwright.config.ts loads it directly on the
+      # runner (process.loadEnvFile) for the e2e step below.
+      - name: Write .env.local
+        run: |
+          cat <<EOF > .env.local
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_APP_URL=http://localhost:3000
+          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          EOF
+
+      # Builds the exact same image used for local dev (see docs/docker-notes.md)
+      # and installs deps into it — this is a fresh runner, so (unlike a
+      # persistent dev machine) there's no stale node_modules volume left
+      # over from a previous build to shadow the one just installed here.
+      - name: Build and start the app container
+        run: docker compose up -d --build
+
+      # Waiting for a real HTTP response is also the simplest proof that
+      # the container's own CMD (`pnpm dev`) actually came up clean —
+      # including its own first-run corepack resolution as the `node` user,
+      # a separate slow-but-harmless path from the ownership fix above
+      # (the build's `corepack prepare --activate` runs as root; `node`
+      # can't see root's pnpm cache and re-downloads its own copy once).
+      - name: Wait for the app to be ready
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000 > /dev/null && exit 0
+            sleep 2
+          done
+          echo "App never responded on :3000" >&2
+          exit 1
+
+      - name: Type-check (in container)
+        run: docker compose exec -T app pnpm exec tsc --noEmit
+
+      - name: Lint (in container)
+        run: docker compose exec -T app pnpm lint
+
+      - name: Unit + component tests (in container)
+        run: docker compose exec -T app pnpm test
+
+      - name: Integration tests — real Supabase project (in container)
+        run: docker compose exec -T app pnpm test:integration
+
+      # Playwright needs a real browser (glibc) — the app image is Alpine/musl,
+      # so e2e runs on the runner itself against the container's published
+      # port, exactly like local dev (playwright.config.ts: "Runs from the
+      # HOST... Assumes docker compose up is already running").
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install deps on the runner (for @playwright/test)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright's Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E tests (on the runner)
+        run: pnpm test:e2e
+
+      - name: Dump container logs
+        if: failure()
+        run: docker compose logs app
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

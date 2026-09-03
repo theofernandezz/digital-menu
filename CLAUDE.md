@@ -11,26 +11,36 @@
 - Framework: Next.js (App Router) + TypeScript
 - Database: Supabase (Postgres)
 - Auth: Supabase Auth — single admin user (the restaurant owner), no customer accounts
-- Styling: Tailwind CSS (assumption — replace if you're using something else, e.g. shadcn/ui on top of Tailwind)
+- Local dev: Docker Compose
+- Deployment: Vercel
+- CI/CD: GitHub Actions
+- Styling: Tailwind CSS (confirm/replace if using something else)
 
 ### Key decisions
-- This project's purpose is to close specific interview skill gaps: testing, CI/CD, Docker, auth/authorization, Atomic Design. When in doubt, prioritize implementing these well over adding features or polish.
-- Docker Compose is used for local dev, not just as a deployment artifact — containerization needs to be a real, demonstrable skill here, not a Dockerfile that sits unused.
-- Supabase over a hand-rolled auth system: gives real RLS/authorization patterns to implement and defend in an interview, without building session/password logic from scratch.
-- Schema carries a `restaurant_id` (tenant) column and RLS policies scoped to it from day one, even though v1 has exactly one restaurant row. Multi-tenant is a stretch goal — this makes it additive later instead of a schema rewrite. Do not build multi-tenant UI or admin-switching logic now; this is schema-level future-proofing only.
-- No ordering or payments in v1. This is a deliberate scope cut for portfolio focus, not a gap to fill later without being asked.
+- Purpose: close specific interview skill gaps — testing, CI/CD, Docker, auth/authorization, Atomic Design, hexagonal architecture. When in doubt, prioritize implementing these well over adding features or polish.
+- Docker Compose is used for local dev as a real, demonstrable skill, not a Dockerfile that sits unused.
+- Supabase over hand-rolled auth: real RLS/authorization patterns to implement and defend in an interview, without building session/password logic from scratch.
+- Schema carries a `restaurant_id` column and RLS policies scoped to it from day one, even though v1 has exactly one restaurant row — additive for the multi-tenant stretch goal instead of a schema rewrite later. Do not build multi-tenant UI or admin-switching logic now; this is schema-level future-proofing only.
+- **Architecture: full hexagonal (ports & adapters) — this overrides the library's default skip rule below.** The library's own default (see Constraints) excludes `hexagonal-architecture` on the reasoning that v1 has no external service/payment integration to swap. That reasoning is correct and was raised independently in planning — the pattern is being used anyway, deliberately, for its interview-defensibility value, not because v1 has a genuine swap-axis today. See `docs/architecture.md` for the folder structure, the outbound-ports-only rule, and a full worked example. Load this skill for all Step 3+ code, not only for future external integrations.
+- No ordering or payments in v1 — deliberate scope cut for portfolio focus, not a gap to fill later without being asked.
+
+### Data model
+Full schema DDL, RLS policies, and Data API grants live in `structure.sql` at the repo root. Column-level reasoning and decisions live in `docs/build-plan.md` (step 2 and step 3). Summary:
+- Tables: `restaurants`, `categories`, `menu_items`, `tags`, `menu_item_tags`.
+- `is_published` (on `restaurants`) gates visibility — access control. `is_available` (on `menu_items`) does NOT gate visibility — it's a "sold out" UI state; the item still shows to the public. Do not conflate these.
+- Supabase's Data API no longer auto-exposes new `public` tables (2026 platform default change) — explicit `GRANT` statements are required in addition to RLS policies before either the admin panel or the public menu can read/write via the client.
 
 ### Domain conventions
 - **This is NOT TableFlow.** TableFlow is a separate, larger, currently-paused project (full ordering system, payments, multi-actor). Do not pull in TableFlow's scope, actors, terminology, or data model here unless explicitly asked.
-- Core entities (v1): `Restaurant` (single row) → `Category` → `MenuItem`. Keep it flat — no modifiers, variants, or combos yet.
-- Two access levels only: public (unauthenticated, read-only, sees only available items) and admin (authenticated restaurant owner, full CRUD). No customer-facing accounts.
-- Components follow Atomic Design under `components/`: `atoms/`, `molecules/`, `organisms/`, `templates/`. Routing/pages stay in `app/` per Next.js convention — don't invent a `pages/` atomic layer on top of the App Router.
+- Core entities (v1): `Restaurant` (single row) → `Category` → `MenuItem`, plus `Tag` / `MenuItemTag` as a many-to-many addition. Keep it otherwise flat — no modifiers, variants, or combos yet.
+- Two access levels only: public (unauthenticated, read-only, sees all items regardless of `is_available` — availability is a UI state, not a visibility gate) and admin (authenticated restaurant owner, full CRUD). No customer-facing accounts.
+- Components follow Atomic Design under `components/`: `atoms/`, `molecules/`, `organisms/`, `templates/`. Routing/pages stay in `app/` per Next.js convention. Business logic lives in `domain/`, `application/`, `adapters/`, `composition/` at the project root (see `docs/architecture.md`) — don't invent a `pages/` atomic layer on top of the App Router, and don't move `app/` under a custom adapters folder.
 
 ### Constraints
 - Single-tenant only for v1. Multi-tenant is stretch scope — don't start it until the rest of the build order is done.
 - No ordering, cart, or payment logic. Don't "fix" this scope cut by adding it back in unasked.
-- Build order: Docker local dev → data model → admin CRUD + auth → public menu (Atomic Design) → tests (unit + integration + one e2e) → CI/CD → (stretch) multi-tenant. Don't jump ahead to CI/CD or a full test suite before there's a working app to test and deploy.
-- Skills listed in the library below that don't apply to this project — don't load them unless scope changes: `i18n`, `react-native` / mobile agent, `email`, `hexagonal-architecture` (no external service/payment integration in v1), `seo`, `performance` (premature at this stage), `state-management` (simple CRUD app — don't add a global store speculatively).
+- Build order (see `docs/build-plan.md` for full detail and status): Docker local dev [done] → data model [done] → admin CRUD + auth [next — follow `docs/architecture.md` from the first file added] → public menu (Atomic Design) → tests (unit + integration + one e2e) → CI/CD → (stretch) multi-tenant. Don't jump ahead to CI/CD or a full test suite before there's a working app to test and deploy.
+- Skills listed in the library below that don't apply to this project — don't load them unless scope changes: `i18n`, `react-native` / mobile agent, `email`, `seo`, `performance` (premature at this stage), `state-management` (simple CRUD app — don't add a global store speculatively). **`hexagonal-architecture` is NOT in this skip list** — see Key decisions above; it's in active use starting Step 3, contrary to the library's own default trigger condition for it.
 
 ### Collaboration style
 - Be direct. Call out overengineering or bad ideas instead of validating whatever's proposed.
