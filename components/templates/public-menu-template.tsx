@@ -1,6 +1,6 @@
 import type { PublishedMenu } from "@/application/use-cases/get-published-menu";
+import { FilterableMenu } from "@/components/organisms/filterable-menu";
 import { MenuHeader } from "@/components/organisms/menu-header";
-import { MenuCategorySection } from "@/components/organisms/menu-category-section";
 
 type PublicMenuTemplateProps = {
   menu: PublishedMenu;
@@ -14,17 +14,8 @@ export function PublicMenuTemplate({ menu }: PublicMenuTemplateProps): React.JSX
       {menu.categories.length === 0 ? (
         <p className="mt-16 font-sans text-ink-muted">La carta todavía no tiene categorías cargadas.</p>
       ) : (
-        <div className="mt-16 space-y-16">
-          {menu.categories.map((category, index) => (
-            <MenuCategorySection
-              key={category.id}
-              name={category.name}
-              description={category.description}
-              index={index}
-              total={menu.categories.length}
-              items={category.items}
-            />
-          ))}
+        <div className="mt-16">
+          <FilterableMenu categories={menu.categories} />
         </div>
       )}
     </main>
