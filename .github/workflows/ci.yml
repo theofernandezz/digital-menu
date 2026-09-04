@@ -3,7 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
 
 # Integration + e2e sign in as the SAME real admin account against the SAME
 # real Supabase project (see the note on the `test` job below). Two runs for
