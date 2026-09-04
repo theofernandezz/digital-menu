@@ -4,6 +4,15 @@ A digital menu app for a restaurant: public, unauthenticated visitors browse the
 
 Built as a portfolio project to demonstrate specific skills in a real, working app rather than in isolated snippets — see [Why this project exists](#why-this-project-exists) below.
 
+## Live demo
+
+- **Public menu:** https://digital-menu-inky.vercel.app/
+- **Admin panel:** https://digital-menu-inky.vercel.app/login
+  - Email: `TODO`
+  - Password: `TODO`
+
+This is the same account CI signs in as for the integration/e2e suites — data may get reset or briefly altered by a test run. Please don't change the restaurant's core info (name/description); toggling item availability or adding a throwaway category is fine.
+
 ## Stack
 
 - **Framework:** Next.js 16 (App Router) + TypeScript, Server Components/Actions by default
