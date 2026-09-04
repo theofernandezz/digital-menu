@@ -8,8 +8,8 @@ Built as a portfolio project to demonstrate specific skills in a real, working a
 
 - **Public menu:** https://digital-menu-inky.vercel.app/
 - **Admin panel:** https://digital-menu-inky.vercel.app/login
-  - Email: `TODO`
-  - Password: `TODO`
+  - Email: `admin@digitalmenu.local`
+  - Password: `OS7ZUp5bFIKwdayKh2gMBD`
 
 This is the same account CI signs in as for the integration/e2e suites — data may get reset or briefly altered by a test run. Please don't change the restaurant's core info (name/description); toggling item availability or adding a throwaway category is fine.
 
