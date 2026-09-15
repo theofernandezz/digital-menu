@@ -1,0 +1,27 @@
+name: Supabase Keep-Alive
+
+# Supabase's free tier pauses projects after a period of no API activity.
+# This project's only Supabase traffic otherwise comes from CI runs
+# (docker-compose.yml:docker-compose.ci.yml pnpm test:integration), which
+# only fire on push/PR — quiet weeks mean quiet Supabase, hence the pause
+# warning email. Runs every 4 days, well under the pause threshold, so a
+# missed or delayed run still leaves margin.
+on:
+  schedule:
+    - cron: '0 6 */4 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Supabase REST API
+        run: |
+          curl -sf \
+            "${NEXT_PUBLIC_SUPABASE_URL}/rest/v1/restaurants?select=id&limit=1" \
+            -H "apikey: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+            > /dev/null
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
