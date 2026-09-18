@@ -36,7 +36,8 @@
 | `skill-sync`    | Sync skill metadata to AGENTS.md                           |
 | `feedback-loop` | Capture improvement signals and learnings                  |
 | `project-setup` | Document project context in CLAUDE.md                      |
+| `spec-driven`   | Write a spec before delegating a task to subagents          |
 
 ---
 
-_Skills Index v2.0 | Total: 25 skills_
+_Total: 26 skills_

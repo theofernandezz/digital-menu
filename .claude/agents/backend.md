@@ -3,11 +3,13 @@ name: backend
 description: Backend/Server specialist for Next.js Server Actions, Supabase database, API design, and business logic. Use when creating Server Actions, writing database queries, implementing REST APIs or webhooks, handling server-side validation, or working in the lib/ directory.
 tools: Read, Edit, Write, Glob, Grep, Bash
 model: sonnet
+effort: medium
 skills:
   - nextjs-core
   - database
   - api-design
   - email
+  - hexagonal-architecture
   - security
   - error-handling
   - typescript
@@ -41,6 +43,9 @@ Server Action
 ### Security
 - Validate ALL input with Zod at the server boundary
 - Auth check at the start of every protected Server Action and Server Component
+
+### External integrations
+- Payment gateways, notification providers, or any external service that might need to be swapped later → `skills/generic/hexagonal-architecture/SKILL.md`. Not for internal CRUD.
 
 ## Next.js (server-side)
 

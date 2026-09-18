@@ -25,13 +25,13 @@ When a task falls into a specific domain, **route to the specialized agent** whi
 | **Backend/Server** | [`/backend/AGENTS.md`](backend/AGENTS.md) | [`agents/backend.md`](agents/backend.md) | nextjs-core, database, security, error-handling, typescript |
 | **Auth**           | [`/auth/AGENTS.md`](auth/AGENTS.md)       | [`agents/auth.md`](agents/auth.md)       | database, security, error-handling, nextjs-core             |
 | **Testing**        | [`/testing/AGENTS.md`](testing/AGENTS.md) | [`agents/testing.md`](agents/testing.md) | testing, typescript, react-patterns                         |
-| **Data/Prisma**    | —                                          | [`agents/data.md`](agents/data.md)       | prisma, database, typescript, error-handling                |
-| **Full-stack Feature** | —                                      | [`agents/feature.md`](agents/feature.md) | nextjs-core, typescript, react-patterns, database, security, testing |
+| **Data/Prisma**    | —                                          | [`agents/data.md`](agents/data.md)       | prisma, database, hexagonal-architecture, typescript, error-handling |
 | **Git**            | —                                          | [`agents/git.md`](agents/git.md)         | git-workflow                                                 |
 | **Mobile**         | —                                          | [`agents/mobile.md`](agents/mobile.md)   | react-native, typescript, state-management, performance, testing |
 
-> **Note:** Files in `/agents/` are optimized versions for Claude Code CLI. Gemini users can use them identically.
-> **Data/Prisma, Full-stack Feature, Git, and Mobile don't have a `/<domain>/AGENTS.md`** — that per-scope doc layer only exists for ui/backend/auth/testing today. Use `agents/*.md` directly for these four.
+> **Note:** Files in `/agents/` are **generated** from `.claude/agents/*.md` (the source of truth) — don't edit them by hand. Claude Code invokes `.claude/agents/*.md` directly as real subagents; Gemini and other tools without subagent support read the generated `/agents/*.md` docs instead.
+> **Data/Prisma, Git, and Mobile don't have a `/<domain>/AGENTS.md`** — that per-scope doc layer only exists for ui/backend/auth/testing today. Use `agents/*.md` directly for these three.
+> There is no `feature` agent — a full-stack feature is sequential delegation across `data`/`backend` → `ui` → `testing`, coordinated by the orchestrator (see `CLAUDE.md`'s "Full-stack features" section).
 
 ### Agent Hierarchy
 
@@ -54,7 +54,7 @@ AGENTS.md (Orchestrator Agent - OA)
 - For Authentication tasks → delegate to auth agent
 - For Testing tasks → delegate to testing agent
 - For Prisma/data modeling tasks → delegate to data agent
-- For full-stack features spanning multiple domains → delegate to feature agent
+- For full-stack features spanning multiple domains → sequential delegation, data/backend → ui → testing (no single feature agent)
 - For commits/branches/PRs → delegate to git agent
 - For React Native/Expo tasks → delegate to mobile agent
 
@@ -187,6 +187,7 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | `skill-sync`    | Sync skill metadata to AGENTS.md    | [SKILL.md](skills/skill-sync/SKILL.md)    |
 | `feedback-loop` | Self-improvement, capture learnings | [SKILL.md](skills/feedback-loop/SKILL.md) |
 | `project-setup` | Interview + document project context in CLAUDE.md | [SKILL.md](skills/project-setup/SKILL.md) |
+| `spec-driven` | Write a spec before delegating to subagents; template + lifecycle | [SKILL.md](skills/spec-driven/SKILL.md) |
 
 ---
 
@@ -308,7 +309,3 @@ pnpm lint && pnpm typecheck
 # Run tests
 pnpm test
 ```
-
----
-
-_Last Updated: 2026-02-25 | Version: 2.3.0_

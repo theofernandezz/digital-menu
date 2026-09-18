@@ -1,13 +1,15 @@
 ---
 name: Feedback Loop - Self-Improvement
 description: |
-  Meta-skill for continuous improvement of the AI library. Captures learnings after tasks
-  and writes structured signals when skills fail, are missing, or are stale.
+  Meta-skill for continuous improvement of the AI library. Files a GitHub issue on
+  theofernandezz/ai-library when skills fail, are missing, or are stale — from wherever
+  the session is running, so a signal from a project or session you don't remember still
+  reaches you. Falls back to a local skills/improvements.md entry if gh isn't available.
   Trigger: Activated mid-task when hitting a gap, and after completing significant tasks.
 license: MIT
 metadata:
   author: ai-library
-  version: "2.0"
+  version: "3.0"
   scope: [root]
   auto_invoke:
     - "After completing a feature"
@@ -19,15 +21,15 @@ metadata:
 
 # Feedback Loop - Self-Improvement
 
-> **Core Principle:** The library improves from real usage. Write signals immediately when you hit a gap — don't wait until the end of the task.
+> **Core Principle:** The library improves from real usage. File signals immediately when you hit a gap — don't wait until the end of the task, and don't let them die in a project you'll forget you were in.
 
 ---
 
-## 🚨 Signal Types (write immediately mid-task)
+## 🚨 Signal Types (file immediately mid-task)
 
-These are runtime signals for when skills fail during actual work. Write them to `skills/improvements.md` **as soon as you notice them**.
+These are runtime signals for when skills fail during actual work.
 
-| Signal | When to write |
+| Signal | When to file |
 | ------ | ------------- |
 | `SIGNAL:gap` | Loaded a skill but it was missing a pattern you needed |
 | `SIGNAL:missing` | Needed a skill that doesn't exist in this library |
@@ -35,43 +37,62 @@ These are runtime signals for when skills fail during actual work. Write them to
 | `SIGNAL:conflict` | Two loaded skills gave contradictory guidance |
 | `SIGNAL:unclear` | A skill rule was ambiguous and you had to guess the intent |
 
-### Signal Format
+### How to file one
 
-```markdown
-## [Date] — SIGNAL:[type] — [skill-name or "new-skill"]
+1. **Check for a duplicate first:**
+   ```bash
+   gh issue list --repo theofernandezz/ai-library --state open --search "in:title <skill-name>"
+   ```
+   A match for the same skill and gap → add a comment there instead of opening a new issue:
+   ```bash
+   gh issue comment <number> --repo theofernandezz/ai-library --body "Hit this again: <one-line context>"
+   ```
 
-**Trigger:** [one sentence: what you were doing when you hit this]
-**Gap:** [what was missing, stale, or unclear]
-**Suggested fix:** [what the skill should say / what new skill is needed]
-**Priority:** Critical | High | Low
+2. **No match → create one:**
+   ```bash
+   gh issue create --repo theofernandezz/ai-library \
+     --title "[gap] testing: missing pattern for Zustand subscriptions" \
+     --body "$(cat <<'EOF'
+   **Trigger:** [one sentence: what you were doing when you hit this]
+   **Gap:** [what was missing, stale, or unclear]
+   **Suggested fix:** [what the skill should say / what new skill is needed]
+   **Priority:** Critical | High | Low
+   EOF
+   )"
+   ```
+   Title format: `[type] skill-name: short summary` — `skill-name` is `new-skill` for `SIGNAL:missing`. `type` is the signal type without the `SIGNAL:` prefix (`gap`, `missing`, `stale`, `conflict`, `unclear`).
+
+3. **Fallback — if `gh` fails** (no auth, no network, rate-limited): append the same `**Trigger:**/**Gap:**/**Suggested fix:**/**Priority:**` block to `skills/improvements.md` under a `## [Date] — SIGNAL:[type] — [skill-name]` heading, exactly as before. Don't retry and don't block the task on this — the fallback exists so the signal isn't lost, not so filing it becomes a blocker.
+
+### Examples
+
 ```
-
-### Signal Examples
-
-```markdown
-## 2026-03-17 — SIGNAL:gap — testing
-
+Title: [gap] testing: missing pattern for Zustand subscriptions
+Body:
 **Trigger:** Writing tests for a Zustand store that uses subscriptions.
 **Gap:** No pattern in testing skill for testing stores with external subscriptions.
-**Suggested fix:** Add "Testing Zustand stores" section with `renderHook` + `act` pattern.
+**Suggested fix:** Add "Testing Zustand stores" section with renderHook + act pattern.
 **Priority:** High
+```
 
----
-
-## 2026-03-17 — SIGNAL:missing — new-skill
-
+```
+Title: [missing] new-skill: Stripe/payments integration
+Body:
 **Trigger:** Implementing Stripe webhooks.
-**Gap:** No skill for payment integrations (Stripe). Had to use api-design + security but missing webhook signature verification pattern.
-**Suggested fix:** Create `payments` skill covering Stripe webhooks, idempotency, and signature verification.
+**Gap:** No skill for payment integrations. Had to use api-design + security but
+missing webhook signature verification pattern.
+**Suggested fix:** Create a payments skill covering Stripe webhooks, idempotency,
+and signature verification.
 **Priority:** High
+```
 
----
-
-## 2026-03-17 — SIGNAL:stale — nextjs-core
-
-**Trigger:** Using `use cache` directive in Next.js 15.
-**Gap:** Skill still documented `unstable_cache` as the recommended pattern. `use cache` is now stable in 15.3.
-**Suggested fix:** Update to `use cache` directive, move `unstable_cache` to FORBIDDEN.
+```
+Title: [stale] nextjs-core: use cache directive not documented
+Body:
+**Trigger:** Using the use cache directive in Next.js 15.
+**Gap:** Skill still documented unstable_cache as the recommended pattern.
+use cache is now stable in 15.3.
+**Suggested fix:** Update to the use cache directive, move unstable_cache to FORBIDDEN.
 **Priority:** Critical
 ```
 
@@ -83,29 +104,27 @@ After completing any significant task, run this 4-question self-check:
 
 ```
 1. Did I need to improvise a pattern not covered by any loaded skill?
-   → If yes: write SIGNAL:gap or SIGNAL:missing
+   → If yes: file SIGNAL:gap or SIGNAL:missing
 
 2. Did I encounter an API or pattern the skill described as current but was outdated?
-   → If yes: write SIGNAL:stale
+   → If yes: file SIGNAL:stale
 
 3. Did two skills tell me different things for the same situation?
-   → If yes: write SIGNAL:conflict
+   → If yes: file SIGNAL:conflict
 
 4. Was a skill rule so ambiguous I had to guess?
-   → If yes: write SIGNAL:unclear
+   → If yes: file SIGNAL:unclear
 ```
 
-If all four answers are "no", no log entry needed.
+If all four answers are "no", no issue needed.
 
 ---
 
 ## 📋 Full Improvement Entry Format
 
-For larger improvements discovered during sessions (not just mid-task signals):
+For larger improvements discovered during sessions (not just mid-task signals), file it the same way — dedup search, then `gh issue create` — but with the fuller body:
 
 ```markdown
-## [Date] - [Skill Name]
-
 ### Context
 What task were you doing?
 
@@ -125,12 +144,14 @@ What was missing or unclear?
 
 ## 📊 Periodic Review (for maintainers)
 
-Monthly, review `skills/improvements.md` and:
-1. Merge accepted improvements into the corresponding SKILL.md
-2. Update `skill-release-registry.json` → bump `lastVerified`
-3. Mark implemented entries as `✅ aplicado`
-4. Escalate Critical items immediately — don't wait for monthly review
+When you next sit down to improve the library:
+1. `gh issue list --repo theofernandezz/ai-library --state open` — review everything filed since last time
+2. Merge accepted improvements into the corresponding SKILL.md
+3. Close the issue with a pointer to the commit: `gh issue close <number> --repo theofernandezz/ai-library --comment "Merged in <commit-sha>"`
+4. Update `skill-release-registry.json` → bump `lastVerified`
+5. Check `skills/improvements.md` too — entries filed via the fallback path (no `gh` at the time) still need to be turned into issues or merged directly
+6. Escalate Critical items immediately — don't wait for a full review pass
 
 ---
 
-*Skill Version: 2.0.0 | Meta-skill for library evolution via runtime signals*
+*Skill Version: 3.0.0 | Meta-skill for library evolution via GitHub issues, with local-file fallback*

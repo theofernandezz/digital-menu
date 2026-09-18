@@ -84,6 +84,7 @@ For special library tasks:
 | Sync AGENTS.md      | `skill-sync`    | Run `./skills/skill-sync/assets/sync.sh`                     |
 | Record improvements | `feedback-loop` | Read `skills/feedback-loop/SKILL.md`                         |
 | Fill in Project Context (interview) | `project-setup` | Read `skills/project-setup/SKILL.md` and run its Interview Protocol |
+| Write a spec before a non-trivial task | `spec-driven` | Read `skills/spec-driven/SKILL.md`, write `specs/<slug>.md` |
 
 ---
 
@@ -185,7 +186,3 @@ See `skills/_index.md` for a complete table of all available skills.
 ## Full Reference
 
 For detailed rules, auto-invoke tables, and full architecture: `AGENTS.md`
-
----
-
-_Gemini Configuration v1.0 | Compatible with ai-library v2.3.0_

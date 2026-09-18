@@ -3,6 +3,7 @@ name: mobile
 description: React Native & Expo specialist for screens, components, navigation, native APIs, and mobile performance. Use when building or editing React Native/Expo apps, configuring Expo Router, working with AsyncStorage/native device APIs, or optimizing mobile UI performance.
 tools: Read, Edit, Write, Glob, Grep
 model: sonnet
+effort: medium
 skills:
   - react-native
   - typescript

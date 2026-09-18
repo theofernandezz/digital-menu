@@ -3,9 +3,11 @@ name: data
 description: Database schema & Prisma specialist for data modeling, migrations, service layer patterns, and PostgreSQL with Neon serverless. Use when working with prisma/schema.prisma, writing Prisma queries, creating database service files, running migrations, or modeling entities in lib/services/.
 tools: Read, Edit, Write, Glob, Grep, Bash
 model: sonnet
+effort: medium
 skills:
   - prisma
   - database
+  - hexagonal-architecture
   - typescript
   - error-handling
 ---
@@ -25,6 +27,7 @@ Server Action → Service layer (lib/services/) → Prisma singleton (lib/db.ts)
 - **Typed shapes** — use `Prisma.*CreateInput`/`Prisma.*UpdateInput` for inputs; `Prisma.UserGetPayload<...>` for outputs. No `any`.
 - **Never expose raw models** — always `select` or `omit` to exclude sensitive fields (e.g. `passwordHash`).
 - **Soft deletes** — filter `deletedAt: null` in every read query on soft-delete models.
+- **Swappable repositories** — only if the data source needs to be swappable (e.g. multi-source), see `skills/generic/hexagonal-architecture/SKILL.md`. Not for simple CRUD.
 
 ## Schema conventions
 
