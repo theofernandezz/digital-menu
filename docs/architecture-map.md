@@ -44,7 +44,7 @@ The folders are layer-first (`domain/`, `application/`, `adapters/`), so a modul
 |---|---|---|---|---|---|
 | **identity** | Who is signed in | `sign-in`, `sign-out`, `get-current-user` | `AuthProvider` | `SupabaseAuthProvider` | `auth.users` (Supabase) |
 | **catalog** | The restaurant, its menu, and the public read model | `create/list/update/delete-category`, `create/list/update/delete-menu-item`, `get-my-restaurant`, `update-restaurant`, `sync-menu-item-tags`, `list-menu-item-tags`, `get-published-menu` | `RestaurantRepository`, `CategoryRepository`, `MenuItemRepository`, `TagRepository`, `AuthProvider` | `Supabase*Repository` | `restaurants`, `categories`, `menu_items`, `tags`, `menu_item_tags` |
-| **ordering** *(Feature 1 — schema done, rest planned)* | Tables, table sessions, orders | *planned:* `place-order`, `get-table-status`, open/close table | *planned:* `OrderRepository` | *planned:* `SupabaseOrderRepository` (calls the `place_order` / `get_table_status` RPCs) | `dining_tables`, `table_sessions`, `orders`, `order_items` |
+| **ordering** *(Feature 1 — schema and RPCs done, application layer planned)* | Tables, table sessions, orders | *planned:* `place-order`, `get-table-status`, open/close table | *planned:* `OrderRepository` | *planned:* `SupabaseOrderRepository` (calls the `place_order` / `get_table_status` RPCs) | `dining_tables`, `table_sessions`, `orders`, `order_items` |
 
 What `app/` receives per request (`composition/request-scope.ts`):
 
@@ -134,8 +134,9 @@ erDiagram
 
 ```mermaid
 flowchart TB
-  subgraph done["Done (F1-1)"]
+  subgraph done["Done (F1-1, F1-2)"]
     schema["supabase/migrations<br/>4 tables + RLS + grants"]
+    rpc["RPCs place_order,<br/>get_table_status"]
   end
 
   subgraph planned["Planned (docs/customer-ordering.md)"]
@@ -145,7 +146,6 @@ flowchart TB
     ord["composition/ordering.ts<br/>ordering use cases"]
     port["application/ports/order-repository.ts"]
     adapter["adapters/driven/supabase/<br/>SupabaseOrderRepository"]
-    rpc["RPCs place_order,<br/>get_table_status"]
   end
 
   cat["catalog.getPublishedMenu<br/>(reused as is)"]
@@ -169,7 +169,7 @@ Customers never touch the tables: the ordering adapter calls two RPCs, and each 
 |---|---|---|---|
 | any module → identity | `AuthProvider` port (`getCurrentUser`, `getCurrentUserId`, `assertOwnsRestaurant`, `signIn`, `signOut`) | TypeScript (port) + lint | Update `SupabaseAuthProvider`, the `FakeAuthProvider` in `application/__tests__/fakes.ts`, and every use case that needs the new capability |
 | `app/` → any module | The module's `*UseCases` type in `composition/<module>.ts` | TypeScript + lint (`app/` cannot import adapters) | Add the capability to the module's type and to `catalogUseCases`/`identityUseCases`; `app/` picks it up through `getUseCases()` |
-| **ordering → catalog (at the database, by design)** | `place_order` reads `menu_items.id`, `.name`, `.price`, `.is_available`, `.restaurant_id` and `restaurants.is_published` | SQL + integration tests (planned, F1-2) | Changing or renaming any of those columns **also** means changing `place_order` and its tests |
+| **ordering → catalog (at the database, by design)** | `place_order` reads `menu_items.id`, `.name`, `.price`, `.is_available`, `.restaurant_id` and `restaurants.is_published` | SQL + integration tests (`place-order.integration.test.ts`) | Changing or renaming any of those columns **also** means changing `place_order` and its tests |
 
 The last row is the one place where a module reaches into another module's data without a TypeScript interface. It is intentional: price and availability must be validated inside the database transaction because the RPC is callable directly with the anon key, so the application layer cannot be the one to check them. Keeping it in this table is what stops it from being a hidden dependency.
 
@@ -183,6 +183,7 @@ The last row is the one place where a module reaches into another module's data 
 | Login, logout or redirect problems | identity module: `SupabaseAuthProvider`, `app/login/`, `app/admin/layout.tsx`, `middleware.ts` |
 | Users see a raw or confusing error | `SupabaseAdapterError` in `adapters/driven/supabase/errors.ts` (what adapters throw), the domain errors in `domain/errors/`, and `toFormErrors` in `app/admin/action-helpers.ts` (what reaches the form) |
 | `pnpm lint` says an import is restricted | The message names the rule; the fix is to go through the interface it points to, not to silence it |
+| An order is rejected, or its total is wrong | `supabase/migrations/20260921130000_ordering_rpcs.sql` and `place-order.integration.test.ts` (the error codes are the RPC's `message`) |
 | Env/config missing at startup | `lib/env.ts` |
 
 ## 8. What the linter enforces
