@@ -6,7 +6,7 @@
 //
 // Limit: PostgREST only exposes select/insert/update/delete, so the other
 // privileges (TRUNCATE, REFERENCES, TRIGGER, MAINTAIN) cannot be probed here.
-// Those are verified with the SQL check documented in docs/build-plan.md (6c).
+// db-catalog.integration.test.ts checks those (and PUBLIC) through the catalog.
 import { beforeAll, describe, expect, it } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
