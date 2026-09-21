@@ -128,7 +128,7 @@ erDiagram
   order_items }o--o| menu_items : "snapshot of (set null on delete)"
 ```
 
-`restaurant_id` is denormalized onto most tables so RLS policies stay a single-column check (single-tenant today, multi-tenant-ready by schema). `anon` has only `SELECT` on the five menu tables and **no** access at all to the four ordering tables. (Locally, and on the hosted project once `20260921120000_tighten_existing_grants.sql` has been applied there by hand.)
+`restaurant_id` is denormalized onto most tables so RLS policies stay a single-column check (single-tenant today, multi-tenant-ready by schema). `anon` has only `SELECT` on the five menu tables and **no** access at all to the four ordering tables. (Locally, and on the hosted project since 2026-09-21, when `20260921120000_tighten_existing_grants.sql` was applied there.)
 
 ## 5. Where Feature 1 plugs in (planned unless marked done)
 
