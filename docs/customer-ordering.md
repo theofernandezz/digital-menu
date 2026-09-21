@@ -1,6 +1,6 @@
 # Feature 1: Customer Ordering
 
-**Status:** planned
+**Status:** in progress — F1-1 (schema) and F1-2 (RPCs) done; what changed while building them is in `docs/build-plan.md`, section 6b
 **Depends on:** public menu view (done), admin CRUD + auth (done)
 **Recommended before starting:** test runner + CI baseline (build-plan Steps 5-6), so this feature lands behind a pipeline. Not a hard blocker.
 
@@ -120,18 +120,18 @@ The QR token is a **credential**. Anyone who can read `dining_tables` can read e
 
 ## 4. Database API (RPCs)
 
-Both functions: `language plpgsql`, `security definer`, `set search_path = public`. They run as the function owner and bypass RLS on the tables above, so **each function must do all its own validation**.
+Both functions: `security definer` with `set search_path = ''` (empty; every object is schema-qualified). `place_order` is `plpgsql`; `get_table_status` is a `stable` SQL function. They run as the function owner and bypass RLS on the tables above, so **each function must do all its own validation**.
 
 After creating each function:
 ```sql
-revoke all on function place_order(text, jsonb) from public;
+revoke all on function place_order(text, jsonb) from public, anon, authenticated;
 grant execute on function place_order(text, jsonb) to anon, authenticated;
 -- same for get_table_status(text)
 ```
-Postgres grants `EXECUTE` to `PUBLIC` by default, so the revoke is not optional.
+Postgres grants `EXECUTE` to `PUBLIC` by default (and local Supabase also grants it to `anon` and `authenticated` explicitly), so the revoke is not optional.
 
 ### `get_table_status(p_qr_token text)`
-Returns `table (label text, is_open boolean)`. Zero rows means invalid token. Exposes the label and open state without ever exposing tokens.
+Returns `table (label text, is_open boolean)`. Zero rows means invalid token. Exposes the label and open state without ever exposing tokens. `is_open` is true only when the table has an open session **and** its restaurant is published.
 
 ### `place_order(p_qr_token text, p_items jsonb)`
 Input `p_items`: `[{ "menuItemId": uuid, "quantity": int, "notes": text? }]`.
@@ -148,11 +148,11 @@ Success returns `jsonb`:
 The confirmation screen renders **only** from this response, so what the customer sees is exactly what was stored.
 
 Algorithm:
-1. Validate payload: `jsonb_typeof = 'array'`, 1-30 lines, quantity 1-20, no duplicate `menuItemId`. Otherwise raise `invalid_items`.
+1. Validate payload: `jsonb_typeof = 'array'`, 1-30 lines, each `menuItemId` a uuid string with no duplicates (letter case ignored), `quantity` an integer 1-20, `notes` a string or null of at most 200 characters once trimmed (stored trimmed of spaces, tabs and line breaks; blank becomes null). Otherwise raise `invalid_items`.
 2. Resolve token to `dining_tables`. Not found: `invalid_table`.
-3. Find and lock the open session (see snippet 1). None: `table_closed`.
+3. Restaurant not published: `table_closed`. Then find and lock the open session (see snippet 1). None: `table_closed`.
 4. Count orders in the session with status `placed`, `preparing` or `ready`. If >= 5: `too_many_open_orders`. `served` and `cancelled` don't count.
-5. Find requested items that are not orderable (see snippet 2). If any: raise `items_unavailable` with the offending IDs in `detail`.
+5. Lock the requested `menu_items` rows of the table's restaurant (`for share`, in id order) so a price or availability edit can't land between the total and the lines, then find the items that are not orderable (see snippet 2). If any: raise `items_unavailable` with the offending IDs in `detail`.
 6. Insert `orders` (total computed in SQL from `menu_items.price * quantity`), then `order_items` with snapshots.
 7. Return the jsonb above.
 
@@ -166,15 +166,14 @@ for update;
 
 **Snippet 2: which requested items are not orderable.**
 ```sql
-select array_agg(r."menuItemId") into v_bad
-from jsonb_to_recordset(p_items)
-       as r("menuItemId" uuid, quantity int, notes text)
-left join menu_items m on m.id = r."menuItemId"
+select array_agg(l.menu_item_id order by l.ord) into v_bad
+from jsonb_to_recordset(v_lines) as l(ord int, menu_item_id uuid)
+left join public.menu_items m on m.id = l.menu_item_id
 where m.id is null
-   or not (m.is_published and m.is_available)
+   or not m.is_available
    or m.restaurant_id <> v_table.restaurant_id;
 ```
-(Adjust column names to your actual `menu_items` schema.)
+`menu_items` has no `is_published` column — that flag lives on `restaurants`, so publication is checked once per order (step 3), not per item. `v_lines` is the payload normalized once, in request order.
 
 Errors are raised with `raise exception '<code>' using detail = '<json>'`. Machine-readable code in `message`, extra data in `detail`. Any failure rolls back the whole function, so orders and lines are all-or-nothing.
 
@@ -183,7 +182,7 @@ The alternative is revoking `anon` and calling the RPC with the service-role key
 
 ## 5. Application layer (hexagonal)
 
-Respects the existing rules: only `adapters/driven/supabase/` imports `@supabase/supabase-js`; only `composition/container.ts` wires things; Server Actions in `app/**/actions.ts` are the driving adapter. Folder names below other than those are suggestions; match your existing layout.
+Respects the existing rules: only `adapters/driven/supabase/` imports `@supabase/supabase-js`; only `composition/` wires things (one file per module, plus `getUseCases()` in `composition/request-scope.ts`, the only thing `app/` imports — see `docs/architecture-map.md`); Server Actions in `app/**/actions.ts` are the driving adapter. Folder names below other than those are suggestions; match your existing layout.
 
 ```
 domain/order/errors.ts                 OrderError codes (union type)
@@ -191,7 +190,7 @@ application/ports/OrderRepository.ts   place(cmd), getTableStatus(token)
 application/use-cases/placeOrder.ts
 application/use-cases/getTableStatus.ts
 adapters/driven/supabase/orderRepository.ts   supabase.rpc(...) + error mapping
-composition/container.ts               wire use cases to the adapter
+composition/ordering.ts                wire the ordering use cases; add them to `UseCases` in request-scope.ts
 app/t/[token]/actions.ts               placeOrderAction (driving adapter)
 ```
 
@@ -291,7 +290,7 @@ Admin actions (`authedAction`):
 ### DB integration tests (against local Supabase, real Postgres)
 `place_order`:
 1. Happy path: `orders` + `order_items` rows exist, snapshots correct, `total = sum(price * qty)`.
-2. Unpublished item: `items_unavailable` with that ID.
+2. Unpublished restaurant: `table_closed`, and nothing is stored.
 3. `is_available = false` item: `items_unavailable`.
 4. Unknown menu item ID: `items_unavailable`.
 5. Invalid token: `invalid_table`.
