@@ -43,12 +43,12 @@ This app deliberately targets a specific set of skills rather than maximizing fe
 domain/        entity classes + invariants, zero framework imports
 application/   outbound ports (interfaces) + use cases, Zod-validated input
 adapters/      driven/supabase/ — the ONLY place the Supabase client is constructed
-composition/   container.ts — wires use cases to Supabase adapters
+composition/   one wiring file per module + getUseCases(), the only thing app/ imports
 app/           Next.js App Router — routes + colocated Server Actions (the driving adapter)
 components/    Atomic Design: atoms/ molecules/ organisms/ templates/, presentation only
 ```
 
-Dependency direction points inward only: `adapters` → `application` → `domain`. Full write-up, the outbound-ports-only rule, and a vertical slice example in [`docs/architecture.md`](docs/architecture.md).
+Dependency direction points inward only: `adapters` → `application` → `domain`. Full write-up, the outbound-ports-only rule, and a vertical slice example in [`docs/architecture.md`](docs/architecture.md). The boundaries are enforced by ESLint rather than by convention, and [`docs/architecture-map.md`](docs/architecture-map.md) maps the layers, modules and request flows.
 
 ## Data model
 

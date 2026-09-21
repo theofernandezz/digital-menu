@@ -7,7 +7,7 @@
 Status: **all backend logic (auth, categories, menu_items, restaurant settings,
 tags) implemented and verified against the real database.** UI/UX (public menu
 + admin panel) delegated to a separate `frontend` session, coordinating over
-the use cases in `composition/container.ts` as the contract — see
+the use cases in `composition/` (`catalog.ts`, `identity.ts`) as the contract — see
 `docs/architecture.md` for the folder structure and the boundary it enforces.
 
 > **2026-09-02 revision:** this doc originally cut hexagonal architecture (see the
@@ -72,13 +72,13 @@ Subtasks, in dependency order:
    idiomatic Server Actions pattern and doesn't violate the server-first rule
    (the form itself is a small, legitimately-interactive component). No
    styling/atoms investment — bare scaffolding, per the scope cuts below.
-5. **`requireAuth()`** — **done** (`adapters/driven/supabase/require-auth.ts`).
-   One reusable check, used in `app/admin/page.tsx` for now. Lives in
-   `adapters/driven/supabase/` (it calls `getUser()`) even though the security
-   skill's example puts it in `lib/auth/server.ts` — same override as the
-   client-construction rule above.
+5. **`requireAuth()`** — **done, later replaced.** It started as
+   `adapters/driven/supabase/require-auth.ts`, which handed Supabase's `User`
+   type to `app/`. It is now `GetCurrentUserUseCase` (`identity.getCurrentUser`)
+   behind the `AuthProvider` port, returning a plain `SessionUser`; the
+   `redirect("/login")` lives in `app/admin/layout.tsx`, where routing belongs.
 6. **`/admin` index** — **still a placeholder**, not the real thing.
-   `app/admin/page.tsx` exists only to exercise `requireAuth()` end-to-end
+   `app/admin/page.tsx` exists only to exercise the auth check end-to-end
    (shows the signed-in email + a sign-out button). The real page — linking to
    Restaurant settings / Categories / Menu items, not a redirect straight into
    one of them — is still open.
@@ -227,7 +227,7 @@ authedAction(schema, handler)
 ```
 
 In the hexagonal layout, `handler` is "call the use case via
-`composition/container.ts`" — the wrapper is part of the driving adapter
+`getUseCases()` (`composition/request-scope.ts`)" — the wrapper is part of the driving adapter
 (`app/**/actions.ts`), not a replacement for the use case's own auth+validation
 (which stays, so the use cases remain independently testable/callable, e.g.
 from `scripts/verify-categories-slice.ts`). The wrapper's job is shaping the
