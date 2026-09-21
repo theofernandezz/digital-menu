@@ -205,3 +205,12 @@ docker compose run --rm --no-deps app pnpm test:integration
 
 `docker compose up` also fails outright on `bind: address already in use` if a
 host dev server already holds port 3000.
+
+Integration tests that need SQL the REST API can't do (a temporary trigger, a
+second transaction holding a lock, catalog checks) connect straight to the local
+database with the `pg` devDependency, through `TEST_DATABASE_URL`: `127.0.0.1:54322`
+in `.env.local` for the host, overridden to `host.docker.internal:54322` for the
+container in `docker-compose.yml`, and written from `supabase status -o env` in CI.
+The tests refuse any other host. Because `node_modules` is a volume seeded from the
+image (item 12), rebuild after pulling a change to `package.json`:
+`docker compose build app` (then `down -v` if a stale volume survives).
