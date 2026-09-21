@@ -10,7 +10,7 @@ export type PublishedMenuItem = {
   price: number;
   imageUrl: string | null;
   // Does NOT gate visibility — "sold out" UI state only, still shows to the
-  // public. See structure.sql / docs/build-plan.md.
+  // public. See supabase/migrations/ / docs/build-plan.md.
   isAvailable: boolean;
   tags: string[];
 };

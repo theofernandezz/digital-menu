@@ -189,4 +189,11 @@ individual `it()`, not setup) was never touched — same root cause, same
 fix: `testTimeout: 15000` in `vitest.integration.config.ts`. 23/23 still
 green locally afterward.
 
+**Local Supabase (2026-09-18, prep for Feature 1 — customer ordering).** Supersedes the "real Supabase project" and GitHub-Actions-secrets details in steps 5 and 6 above (kept as written, they're the history). Tests and dev moved off the shared live project onto a local stack (`supabase start`). Why: a second hosted project wasn't possible (free tier caps active projects at 2 and paused ones need a keep-alive), and Feature 1's tests are destructive (concurrent `place_order` calls, a failing test-only trigger) — not something to run against the project behind the public demo, which an integration test had already wiped data on once (step 4). Neon was considered and rejected: plain Postgres has no `anon`/`authenticated` roles, `auth.uid()` or PostgREST, so RLS/grant tests and the `supabase.rpc` adapter wouldn't be exercised for real.
+
+- `structure.sql` is gone; `supabase/migrations/20260918000000_baseline.sql` is its exact content and migrations are now the source of truth. **Never apply the baseline to the hosted project** — it already has that schema; only newer migrations go there, by hand through the SQL Editor (still no `db push`, which needs the DB password).
+- `supabase/seed.sql`: admin `admin@local.test` / `local-admin-password` (public on purpose — disposable DB), `Demo Restaurant`, 2 categories, 3 items. `supabase db reset` restores it. The integration suite leaves 4 tags behind, as it did before; reset clears them.
+- Production values are kept in `.env.prod.local` (gitignored); `.env.local` points at the local stack, so a test run can't reach the demo by accident.
+- Verified locally: `db reset` applies clean, seeded admin signs in, 23/23 integration (3.2s vs. minutes over the network), 1/1 e2e — also on the reduced service set CI uses (`-x studio,…`: 4 containers, 28s cold). **The `ci.yml` change itself is unverified until the first push** — it can only run on a GitHub runner. The `hookTimeout`/`testTimeout` raises in `vitest.integration.config.ts` were for network latency to the hosted project and are now likely unnecessary; left alone deliberately.
+
 ## 7. [ ] Stretch: multi-tenant

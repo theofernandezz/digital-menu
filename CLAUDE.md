@@ -25,7 +25,7 @@
 - No ordering or payments in v1 — deliberate scope cut for portfolio focus, not a gap to fill later without being asked.
 
 ### Data model
-Full schema DDL, RLS policies, and Data API grants live in `structure.sql` at the repo root. Column-level reasoning and decisions live in `docs/build-plan.md` (step 2 and step 3). Summary:
+Full schema DDL, RLS policies, and Data API grants live in `supabase/migrations/` (baseline: `20260918000000_baseline.sql`; local dev/CI seed in `supabase/seed.sql`). Column-level reasoning and decisions live in `docs/build-plan.md` (step 2 and step 3). Summary:
 - Tables: `restaurants`, `categories`, `menu_items`, `tags`, `menu_item_tags`.
 - `is_published` (on `restaurants`) gates visibility — access control. `is_available` (on `menu_items`) does NOT gate visibility — it's a "sold out" UI state; the item still shows to the public. Do not conflate these.
 - Supabase's Data API no longer auto-exposes new `public` tables (2026 platform default change) — explicit `GRANT` statements are required in addition to RLS policies before either the admin panel or the public menu can read/write via the client.

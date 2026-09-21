@@ -21,7 +21,7 @@ export class UpdateCategoryUseCase {
     const existing = await this.repo.findById(input.id);
     if (!existing) throw new NotFoundError("Category");
     // Guards against reassigning a category to a restaurant that wasn't
-    // just proven owned above (restaurant_id is denormalized, see structure.sql).
+    // just proven owned above (restaurant_id is denormalized, see supabase/migrations).
     if (existing.restaurantId !== input.restaurantId) throw new UnauthorizedError();
 
     const updated = Category.create({

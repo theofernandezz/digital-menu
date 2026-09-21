@@ -8,3 +8,12 @@ services:
       - /app/node_modules
     env_file:
       - .env.local
+    # Supabase runs via the CLI on the host (`supabase start`), not in this
+    # compose file. .env.local keeps 127.0.0.1 so the host-side Playwright run
+    # reaches it; inside the container that address is the container itself,
+    # so override just the URL. host-gateway makes host.docker.internal
+    # resolve on Linux (CI) too — Docker Desktop provides it natively.
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: http://host.docker.internal:54321
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

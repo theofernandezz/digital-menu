@@ -7,11 +7,10 @@ on:
   pull_request:
     paths-ignore: ['**.md', 'docs/**', 'LICENSE']
 
-# Integration + e2e sign in as the SAME real admin account against the SAME
-# real Supabase project (see the note on the `test` job below). Two runs for
-# the same ref overlapping in time race each other's signInWithPassword and
-# category/item fixtures — cancel the older one instead of letting both hit
-# Supabase concurrently.
+# Integration + e2e sign in as the SAME admin account against the SAME
+# database within a job (see the note on the `test` job below). Each run now
+# gets its own throwaway local Supabase stack, so overlapping runs no longer
+# race each other — cancelling the older one just saves runner minutes.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -27,8 +26,8 @@ jobs:
     # One job, sequential steps — not a matrix, not parallel jobs. Both
     # vitest.integration.config.ts (fileParallelism: false) and
     # playwright.config.ts (fullyParallel: false) exist specifically because
-    # integration + e2e sign in as the SAME real admin account against the
-    # SAME real Supabase project; running them in concurrent CI jobs would
+    # integration + e2e sign in as the SAME admin account against the SAME
+    # local Supabase database; running them in concurrent CI jobs would
     # reintroduce the exact race those settings were added to avoid.
     steps:
       - uses: actions/checkout@v4
@@ -52,18 +51,32 @@ jobs:
       - name: Allow the container's node user to write into the checkout
         run: sudo chmod -R a+rwX .
 
-      # Written from secrets, never committed. docker-compose.yml reads this
-      # via env_file, and playwright.config.ts loads it directly on the
-      # runner (process.loadEnvFile) for the e2e step below.
+      # Tests run against a throwaway local Supabase stack, not the live
+      # project: `supabase start` applies supabase/migrations and seeds
+      # supabase/seed.sql (admin user + demo restaurant). Only the services the
+      # app and tests actually use are started, to keep the job fast.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+
+      - name: Start local Supabase
+        run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor,realtime,storage-api,postgres-meta
+
+      # Generated, never committed. The local keys are fixed demo values, not
+      # secrets. docker-compose.yml reads this via env_file (and overrides the
+      # URL for the container), and playwright.config.ts loads it directly on
+      # the runner (process.loadEnvFile) for the e2e step below. The admin
+      # credentials are the ones seeded by supabase/seed.sql.
       - name: Write .env.local
         run: |
+          eval "$(supabase status -o env)"
           cat <<EOF > .env.local
-          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL=$API_URL
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY
+          SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY
           NEXT_PUBLIC_APP_URL=http://localhost:3000
-          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
-          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_EMAIL=admin@local.test
+          ADMIN_PASSWORD=local-admin-password
           EOF
 
       # Builds the exact same image used for local dev (see docs/docker-notes.md)
@@ -97,7 +110,7 @@ jobs:
       - name: Unit + component tests (in container)
         run: docker compose exec -T app pnpm test
 
-      - name: Integration tests — real Supabase project (in container)
+      - name: Integration tests — local Supabase (in container)
         run: docker compose exec -T app pnpm test:integration
 
       # Playwright needs a real browser (glibc) — the app image is Alpine/musl,
@@ -125,4 +138,6 @@ jobs:
 
       - name: Tear down
         if: always()
-        run: docker compose down -v
+        run: |
+          docker compose down -v
+          supabase stop --no-backup

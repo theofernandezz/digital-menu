@@ -5,7 +5,7 @@ import type { MenuItemRepository } from "@/application/ports/menu-item-repositor
 import type { CategoryRepository } from "@/application/ports/category-repository";
 import type { AuthProvider } from "@/application/ports/auth-provider";
 
-// numeric(10,2) in structure.sql — z.coerce.number() per project convention
+// numeric(10,2) in supabase/migrations — z.coerce.number() per project convention
 // (FormData gives strings), with a float-drift-tolerant 2-decimal check
 // instead of .multipleOf(0.01), which false-rejects values like 19.99
 // (19.99 * 100 !== 1999 exactly in IEEE 754).

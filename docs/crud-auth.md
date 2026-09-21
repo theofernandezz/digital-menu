@@ -93,7 +93,7 @@ None touch the five target skills (testing, CI/CD, Docker, auth, Atomic Design).
 
 Two layers, deliberately not redundant:
 
-- **RLS at the DB** (already in `structure.sql`) — enforced regardless of
+- **RLS at the DB** (already in `supabase/migrations/`) — enforced regardless of
   application-layer bugs.
 - **Explicit `auth.getUser()` check in middleware and server actions** — fails fast,
   gives a real redirect/UX instead of relying on a DB error bubbling up.
