@@ -2,8 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createServerSupabaseClient } from "@/adapters/driven/supabase/client";
-import { signInUseCase } from "@/composition/container";
+import { getUseCases } from "@/composition/request-scope";
 
 export type SignInState = {
   errors?: {
@@ -14,10 +13,10 @@ export type SignInState = {
 };
 
 export async function signInAction(_prevState: SignInState, formData: FormData): Promise<SignInState> {
-  const client = await createServerSupabaseClient();
+  const { identity } = await getUseCases();
 
   try {
-    await signInUseCase(client).execute({
+    await identity.signIn.execute({
       email: formData.get("email"),
       password: formData.get("password"),
     });

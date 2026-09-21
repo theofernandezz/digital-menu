@@ -3,7 +3,7 @@ import { Category } from "@/domain/entities/category";
 import { NotFoundError, UnauthorizedError } from "@/domain/errors/domain-errors";
 import type { CategoryRepository } from "@/application/ports/category-repository";
 import type { AuthProvider } from "@/application/ports/auth-provider";
-import { categorySchema } from "@/application/use-cases/create-category";
+import { categorySchema } from "@/application/schemas/category";
 
 const updateCategorySchema = categorySchema.extend({ id: z.string().uuid() });
 

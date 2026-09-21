@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/adapters/driven/supabase/client";
 import { getMyRestaurant } from "@/app/admin/get-restaurant";
 import { toRestaurantViewModel } from "@/app/admin/view-models";
-import { listCategoriesUseCase, listMenuItemsUseCase } from "@/composition/container";
+import { getUseCases } from "@/composition/request-scope";
 
 const SECTIONS = [
   { href: "/admin/categories", label: "Categorías", description: "Organizá las secciones de la carta." },
@@ -12,10 +11,10 @@ const SECTIONS = [
 
 export default async function AdminPage(): Promise<React.JSX.Element> {
   const restaurant = toRestaurantViewModel(await getMyRestaurant());
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
   const [categories, items] = await Promise.all([
-    listCategoriesUseCase(client).execute({ restaurantId: restaurant.id }),
-    listMenuItemsUseCase(client).execute({ restaurantId: restaurant.id }),
+    catalog.listCategories.execute({ restaurantId: restaurant.id }),
+    catalog.listMenuItems.execute({ restaurantId: restaurant.id }),
   ]);
   const soldOutCount = items.filter((item) => !item.isAvailable).length;
 

@@ -12,7 +12,7 @@ import { MenuItem } from "@/domain/entities/menu-item";
 import { Restaurant } from "@/domain/entities/restaurant";
 import { Tag } from "@/domain/entities/tag";
 import { UnauthorizedError } from "@/domain/errors/domain-errors";
-import type { AuthProvider } from "@/application/ports/auth-provider";
+import type { AuthProvider, SessionUser } from "@/application/ports/auth-provider";
 import type { CategoryRepository } from "@/application/ports/category-repository";
 import type { MenuItemRepository } from "@/application/ports/menu-item-repository";
 import type { RestaurantRepository } from "@/application/ports/restaurant-repository";
@@ -26,9 +26,15 @@ export const FAKE_RESTAURANT_ID = "00000000-0000-4000-8000-000000000002";
 
 export class FakeAuthProvider implements AuthProvider {
   currentUserId: string | null = FAKE_USER_ID;
+  currentEmail: string | null = "owner@example.test";
   ownedRestaurantIds = new Set<string>([FAKE_RESTAURANT_ID]);
   signInError: Error | null = null;
   signOutCalled = false;
+
+  async getCurrentUser(): Promise<SessionUser | null> {
+    if (!this.currentUserId) return null;
+    return { id: this.currentUserId, email: this.currentEmail };
+  }
 
   async getCurrentUserId(): Promise<string> {
     if (!this.currentUserId) throw new UnauthorizedError();

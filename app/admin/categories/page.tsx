@@ -1,14 +1,13 @@
-import { createServerSupabaseClient } from "@/adapters/driven/supabase/client";
 import { getMyRestaurant } from "@/app/admin/get-restaurant";
 import { toCategoryViewModel } from "@/app/admin/view-models";
-import { listCategoriesUseCase } from "@/composition/container";
+import { getUseCases } from "@/composition/request-scope";
 import { CategoryForm } from "@/app/admin/categories/category-form";
 import { CategoryList } from "@/app/admin/categories/category-list";
 
 export default async function CategoriesPage(): Promise<React.JSX.Element> {
   const restaurant = await getMyRestaurant();
-  const client = await createServerSupabaseClient();
-  const categories = (await listCategoriesUseCase(client).execute({ restaurantId: restaurant.id })).map(
+  const { catalog } = await getUseCases();
+  const categories = (await catalog.listCategories.execute({ restaurantId: restaurant.id })).map(
     toCategoryViewModel,
   );
 
