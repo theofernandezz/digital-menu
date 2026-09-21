@@ -28,9 +28,9 @@ create table dining_tables (
 -- such as (dining_table_id, restaurant_id) -> dining_tables(id, restaurant_id)
 -- would enforce it in the database. Low risk in v1, so deferred: exploiting
 -- it needs a second restaurant row (nothing at the DB level limits restaurants
--- to one, and the hosted project's sign-up setting was not checked) plus the
--- target table's UUID, which only its owner can read. Do it when multi-tenant
--- work starts.
+-- to one; sign-up was disabled on the hosted project on 2026-09-21, but local
+-- Supabase still allows it) plus the target table's UUID, which only its owner
+-- can read. Do it when multi-tenant work starts.
 create table table_sessions (
   id              uuid primary key default gen_random_uuid(),
   restaurant_id   uuid not null references restaurants(id) on delete cascade,
