@@ -6,3 +6,4 @@
 // cookies and is only meant for app/.
 export * from "@/composition/catalog";
 export * from "@/composition/identity";
+export * from "@/composition/ordering";

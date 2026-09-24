@@ -11,10 +11,12 @@ import { Category } from "@/domain/entities/category";
 import { MenuItem } from "@/domain/entities/menu-item";
 import { Restaurant } from "@/domain/entities/restaurant";
 import { Tag } from "@/domain/entities/tag";
+import type { PlacedOrder } from "@/domain/entities/placed-order";
 import { UnauthorizedError } from "@/domain/errors/domain-errors";
 import type { AuthProvider, SessionUser } from "@/application/ports/auth-provider";
 import type { CategoryRepository } from "@/application/ports/category-repository";
 import type { MenuItemRepository } from "@/application/ports/menu-item-repository";
+import type { OrderRepository, PlaceOrderCommand } from "@/application/ports/order-repository";
 import type { RestaurantRepository } from "@/application/ports/restaurant-repository";
 import type { TagRepository } from "@/application/ports/tag-repository";
 
@@ -176,5 +178,22 @@ export class FakeTagRepository implements TagRepository {
 
   async replaceMenuItemTags(menuItemId: string, tagIds: string[]): Promise<void> {
     this.menuItemTags.set(menuItemId, tagIds);
+  }
+}
+
+export class FakeOrderRepository implements OrderRepository {
+  readonly placed: PlaceOrderCommand[] = [];
+  result: PlacedOrder = {
+    orderId: "00000000-0000-4000-8000-0000000000a1",
+    placedAt: "2026-09-24T12:00:00.000Z",
+    menuSubtotal: 0,
+    items: [],
+  };
+  failWith: Error | null = null;
+
+  async place(command: PlaceOrderCommand): Promise<PlacedOrder> {
+    this.placed.push(command);
+    if (this.failWith) throw this.failWith;
+    return this.result;
   }
 }
