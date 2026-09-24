@@ -31,7 +31,7 @@ sequenceDiagram
 
   C->>P: open URL from QR
   P->>DB: get_table_status(token) via use case
-  DB-->>P: { label, isOpen }
+  DB-->>P: { tableNumber, isOpen }
   C->>P: build cart (client state only)
   C->>A: submit { tableToken, items }
   A->>U: validated command (Zod)
@@ -63,11 +63,11 @@ create type order_status as enum
 create table dining_tables (
   id            uuid primary key default gen_random_uuid(),
   restaurant_id uuid not null references restaurants(id) on delete cascade,
-  label         text not null,
+  table_number  int not null check (table_number between 1 and 999),  -- F1-4a: was `label text`
   qr_token      text not null unique
                 default replace(gen_random_uuid()::text, '-', ''),
   created_at    timestamptz not null default now(),
-  unique (restaurant_id, label)
+  unique (restaurant_id, table_number)
 );
 
 create table table_sessions (
@@ -131,7 +131,7 @@ grant execute on function place_order(text, jsonb) to anon, authenticated;
 Postgres grants `EXECUTE` to `PUBLIC` by default (and local Supabase also grants it to `anon` and `authenticated` explicitly), so the revoke is not optional.
 
 ### `get_table_status(p_qr_token text)`
-Returns `table (label text, is_open boolean)`. Zero rows means invalid token. Exposes the label and open state without ever exposing tokens. `is_open` is true only when the table has an open session **and** its restaurant is published.
+Returns `table (table_number int, is_open boolean)` (F1-4a; it returned `label text` in F1-2). Zero rows means invalid token. Exposes the table number and open state without ever exposing tokens. `is_open` is true only when the table has an open session **and** its restaurant is published.
 
 ### `place_order(p_qr_token text, p_items jsonb)`
 Input `p_items`: `[{ "menuItemId": uuid, "quantity": int, "notes": text? }]`.
@@ -330,7 +330,8 @@ Each task should be a separate Claude Code session with tests written in the sam
 | F1-1 | Migration (tables, enum, indexes, RLS, grants) + dev seed | Applies cleanly to a fresh DB. Seed creates 3 tables with readable tokens (`dev-table-1..3`) and an open session on each. `anon` has no direct access. |
 | F1-2 | `place_order` + `get_table_status` RPCs + integration tests | Tests 1-15 above pass in CI-runnable form. |
 | F1-3 | Domain errors, port, `place-order` use case, Supabase adapter, Zod schema, `placeOrderAction` (`get-table-status` moved to F1-6) | Unit tests for schema, use case and error mapping pass. Architecture rules still hold. |
-| F1-4 | `/admin/tables`: list, open, close, dev link | Open on an already-open table fails cleanly. Admin-only. |
+| F1-4a | Tables are identified by `table_number` (1-999, unique per restaurant) instead of `label`: migration, `get_table_status`, seed, tests, one-paste production script | Applies on a fresh DB; constraints and RPC tested; production script tested against a simulated production state. |
+| F1-4b | `/admin/tables`: list, create (number only), open, close, table link | Open on an already-open table fails cleanly. Close on a closed table is a no-op. `restaurant_id` is derived from the table, never from the client. Admin-only. |
 | F1-5 | Cart reducer + provider + `sessionStorage` persistence | Reducer unit tests pass. No hydration warnings. |
 | F1-6 | `/t/[token]` page: table status, read-only mode, cart UI, submit, confirmation, error handling | Manual flow: open table in admin, order from `/t/dev-table-1`, see row in DB. Each error in section 8 reachable and handled. |
 
@@ -350,7 +351,7 @@ Start with F1-1 to F1-3. Everything else depends on the RPC contract.
 - **Why snapshot name and price?** Orders are historical records; catalog edits must not rewrite them.
 - **Why sessions instead of rate limiting or OTP?** A rate limit doesn't stop a remote spammer with a QR photo, and an OTP printed on the QR protects nothing. The waiter opening the table is the out-of-band step, and it also scopes orders per meal.
 - **Why `for update` on the session?** Without it, concurrent orders can both pass the "max 5 open orders" check.
-- **Why no public read on `dining_tables`?** The token is a credential; the `get_table_status` RPC exposes only label and open state.
+- **Why no public read on `dining_tables`?** The token is a credential; the `get_table_status` RPC exposes only the table number and open state.
 - **Why `security definer` + `set search_path` + `revoke ... from public`?** It runs with owner privileges, so it must pin the search path (avoid hijacking via schema objects) and restrict who can execute it.
 
 ## 13. Known gaps (deliberately deferred)
