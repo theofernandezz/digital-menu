@@ -26,7 +26,7 @@ export function MenuItemForm({ categories }: MenuItemFormProps): React.JSX.Eleme
       formRef.current?.reset();
       toast.success("Plato creado");
     }
-  }, [state.success]);
+  }, [state]);
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">

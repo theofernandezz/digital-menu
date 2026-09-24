@@ -27,7 +27,7 @@ export function RestaurantSettingsForm({ restaurant }: RestaurantSettingsFormPro
     if (state.success) {
       toast.success("Restaurante actualizado");
     }
-  }, [state.success]);
+  }, [state]);
 
   return (
     <form action={formAction} className="space-y-4">

@@ -19,7 +19,7 @@ export function CategoryForm(): React.JSX.Element {
       formRef.current?.reset();
       toast.success("Categoría creada");
     }
-  }, [state.success]);
+  }, [state]);
 
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
