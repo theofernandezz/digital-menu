@@ -1,6 +1,6 @@
 # Feature 1: Customer Ordering
 
-**Status:** in progress — F1-1 (schema), F1-2 (RPCs) and F1-3 (`placeOrder` application layer) done; what changed while building them is in `docs/build-plan.md`, section 6b
+**Status:** in progress — F1-1 (schema), F1-2 (RPCs), F1-3 (`placeOrder` application layer), F1-4a (table numbers) and F1-4b (`/admin/tables`) done; what changed while building them is in `docs/build-plan.md`, section 6b
 **Depends on:** public menu view (done), admin CRUD + auth (done)
 **Recommended before starting:** test runner + CI baseline (build-plan Steps 5-6), so this feature lands behind a pipeline. Not a hard blocker.
 
@@ -274,9 +274,10 @@ Atomic Design placement (reuse existing atoms and molecules from the menu view):
 - **Organisms:** `CartSummary` (drawer or sticky bar), `OrderConfirmation`.
 - **Template/page:** `TableMenuTemplate`, `/t/[token]/page.tsx` (server component: resolves table status, loads menu, renders the client cart boundary).
 
-Admin actions (`authedAction`):
-- `openTable(diningTableId)`: insert session. Unique-index violation (`23505`) maps to `already_open`.
-- `closeTable(diningTableId)`: set `closed_at = now()` where `closed_at is null`.
+Admin actions (F1-4b; `authedAction` doesn't exist, each use case checks the session and ownership itself, and the actions are plain Server Actions with `useActionState`):
+- `createTable`: takes the number (1-999); a duplicate in the restaurant is `DuplicateTableNumberError` (`23505` on `dining_tables`).
+- `openTable(id)`: loads the table, asserts ownership of the **table's** restaurant, inserts the session with that `restaurant_id` (a `restaurantId` from the caller is ignored). The one-open-session index (`23505` on `table_sessions`) maps to `AlreadyOpenError`. The action also revalidates the page on that error, so a table opened from another tab refreshes.
+- `closeTable(id)`: sets `closed_at = now()` where `closed_at is null`; closing a closed table is a no-op.
 
 ## 8. Error to UI behavior
 

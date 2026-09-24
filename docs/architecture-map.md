@@ -44,7 +44,7 @@ The folders are layer-first (`domain/`, `application/`, `adapters/`), so a modul
 |---|---|---|---|---|---|
 | **identity** | Who is signed in | `sign-in`, `sign-out`, `get-current-user` | `AuthProvider` | `SupabaseAuthProvider` | `auth.users` (Supabase) |
 | **catalog** | The restaurant, its menu, and the public read model | `create/list/update/delete-category`, `create/list/update/delete-menu-item`, `get-my-restaurant`, `update-restaurant`, `sync-menu-item-tags`, `list-menu-item-tags`, `get-published-menu` | `RestaurantRepository`, `CategoryRepository`, `MenuItemRepository`, `TagRepository`, `AuthProvider` | `Supabase*Repository` | `restaurants`, `categories`, `menu_items`, `tags`, `menu_item_tags` |
-| **ordering** *(Feature 1 — schema, RPCs and `placeOrder` done; `get-table-status` and table admin planned)* | Tables, table sessions, orders | `place-order`; *planned:* `get-table-status`, open/close table | `OrderRepository` | `SupabaseOrderRepository` (calls `place_order`; *planned:* `get_table_status`) | `dining_tables`, `table_sessions`, `orders`, `order_items` |
+| **ordering** *(Feature 1 — schema, RPCs, `placeOrder` and table admin done; `get-table-status` planned)* | Tables, table sessions, orders | `place-order`, `list-tables`, `create-table`, `open-table`, `close-table`; *planned:* `get-table-status` | `OrderRepository`, `DiningTableRepository` | `SupabaseOrderRepository` (calls `place_order`; *planned:* `get_table_status`), `SupabaseDiningTableRepository` (tables and sessions directly, under the owner's RLS) | `dining_tables`, `table_sessions`, `orders`, `order_items` |
 
 What `app/` receives per request (`composition/request-scope.ts`):
 
@@ -134,10 +134,11 @@ erDiagram
 
 ```mermaid
 flowchart TB
-  subgraph done["Done (F1-1 to F1-3)"]
+  subgraph done["Done (F1-1 to F1-4)"]
     schema["supabase/migrations<br/>4 tables + RLS + grants"]
     rpc["RPCs place_order,<br/>get_table_status"]
     action["app/t/[token]/actions.ts<br/>placeOrderAction"]
+    admin["app/admin/tables<br/>list / create / open / close"]
     ord["composition/ordering.ts<br/>ordering use cases"]
     port["application/ports/order-repository.ts"]
     adapter["adapters/driven/supabase/<br/>SupabaseOrderRepository"]
@@ -145,7 +146,6 @@ flowchart TB
 
   subgraph planned["Planned (docs/customer-ordering.md)"]
     page["app/t/[token]/page.tsx<br/>menu + cart"]
-    admin["app/admin/tables<br/>open / close tables"]
   end
 
   cat["catalog.getPublishedMenu<br/>(reused as is)"]
