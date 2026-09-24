@@ -44,12 +44,12 @@ The folders are layer-first (`domain/`, `application/`, `adapters/`), so a modul
 |---|---|---|---|---|---|
 | **identity** | Who is signed in | `sign-in`, `sign-out`, `get-current-user` | `AuthProvider` | `SupabaseAuthProvider` | `auth.users` (Supabase) |
 | **catalog** | The restaurant, its menu, and the public read model | `create/list/update/delete-category`, `create/list/update/delete-menu-item`, `get-my-restaurant`, `update-restaurant`, `sync-menu-item-tags`, `list-menu-item-tags`, `get-published-menu` | `RestaurantRepository`, `CategoryRepository`, `MenuItemRepository`, `TagRepository`, `AuthProvider` | `Supabase*Repository` | `restaurants`, `categories`, `menu_items`, `tags`, `menu_item_tags` |
-| **ordering** *(Feature 1 — schema and RPCs done, application layer planned)* | Tables, table sessions, orders | *planned:* `place-order`, `get-table-status`, open/close table | *planned:* `OrderRepository` | *planned:* `SupabaseOrderRepository` (calls the `place_order` / `get_table_status` RPCs) | `dining_tables`, `table_sessions`, `orders`, `order_items` |
+| **ordering** *(Feature 1 — schema, RPCs and `placeOrder` done; `get-table-status` and table admin planned)* | Tables, table sessions, orders | `place-order`; *planned:* `get-table-status`, open/close table | `OrderRepository` | `SupabaseOrderRepository` (calls `place_order`; *planned:* `get_table_status`) | `dining_tables`, `table_sessions`, `orders`, `order_items` |
 
 What `app/` receives per request (`composition/request-scope.ts`):
 
 ```ts
-const { catalog, identity } = await getUseCases();
+const { catalog, identity, ordering } = await getUseCases();
 await catalog.createCategory.execute(input);     // never a client, never an adapter
 const user = await identity.getCurrentUser.execute();
 ```
@@ -134,18 +134,18 @@ erDiagram
 
 ```mermaid
 flowchart TB
-  subgraph done["Done (F1-1, F1-2)"]
+  subgraph done["Done (F1-1 to F1-3)"]
     schema["supabase/migrations<br/>4 tables + RLS + grants"]
     rpc["RPCs place_order,<br/>get_table_status"]
+    action["app/t/[token]/actions.ts<br/>placeOrderAction"]
+    ord["composition/ordering.ts<br/>ordering use cases"]
+    port["application/ports/order-repository.ts"]
+    adapter["adapters/driven/supabase/<br/>SupabaseOrderRepository"]
   end
 
   subgraph planned["Planned (docs/customer-ordering.md)"]
     page["app/t/[token]/page.tsx<br/>menu + cart"]
-    action["app/t/[token]/actions.ts<br/>placeOrderAction"]
     admin["app/admin/tables<br/>open / close tables"]
-    ord["composition/ordering.ts<br/>ordering use cases"]
-    port["application/ports/order-repository.ts"]
-    adapter["adapters/driven/supabase/<br/>SupabaseOrderRepository"]
   end
 
   cat["catalog.getPublishedMenu<br/>(reused as is)"]

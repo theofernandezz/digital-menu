@@ -1,6 +1,6 @@
 # Feature 1: Customer Ordering
 
-**Status:** in progress — F1-1 (schema) and F1-2 (RPCs) done; what changed while building them is in `docs/build-plan.md`, section 6b
+**Status:** in progress — F1-1 (schema), F1-2 (RPCs) and F1-3 (`placeOrder` application layer) done; what changed while building them is in `docs/build-plan.md`, section 6b
 **Depends on:** public menu view (done), admin CRUD + auth (done)
 **Recommended before starting:** test runner + CI baseline (build-plan Steps 5-6), so this feature lands behind a pipeline. Not a hard blocker.
 
@@ -187,14 +187,15 @@ Respects the existing rules: only `adapters/driven/supabase/` imports `@supabase
 ```
 domain/order/errors.ts                 OrderError codes (union type)
 application/ports/OrderRepository.ts   place(cmd), getTableStatus(token)
-application/use-cases/placeOrder.ts
-application/use-cases/getTableStatus.ts
-adapters/driven/supabase/orderRepository.ts   supabase.rpc(...) + error mapping
+application/use-cases/place-order.ts
+application/use-cases/get-table-status.ts        (F1-6: its only consumer is the page)
+adapters/driven/supabase/supabase-order-repository.ts   supabase.rpc(...) + error mapping
+domain/errors/order-errors.ts
 composition/ordering.ts                wire the ordering use cases; add them to `UseCases` in request-scope.ts
 app/t/[token]/actions.ts               placeOrderAction (driving adapter)
 ```
 
-**Public actions:** `authedAction(schema, handler)` requires a session, so add a sibling `publicAction(schema, handler)` that does Zod parse, calls the handler and maps errors, without the auth check.
+**Public actions:** there is no generic wrapper. `authedAction` does not exist in the code, and a `publicAction` would have exactly one caller, so `placeOrderAction` is a plain Server Action: the use case parses with Zod, and `toPlaceOrderError` (`app/t/[token]/place-order-result.ts`) maps the outcome to the result union below. Extract a wrapper when a second public action appears.
 
 **Zod schema.** This payload is JSON from a client-called Server Action, not `FormData`, so no `z.coerce` is needed.
 ```ts
@@ -220,7 +221,7 @@ export const placeOrderSchema = z.object({
 **Action result:** never throw business errors. Return a discriminated union so `useActionState` can render them.
 ```ts
 type PlaceOrderResult =
-  | { ok: true; data: { orderId: string; total: number; placedAt: string;
+  | { ok: true; data: { orderId: string; menuSubtotal: number; placedAt: string;
         items: { name: string; unitPrice: number; quantity: number; notes: string | null }[] } }
   | { ok: false; error:
         | { code: "invalid_table" }
@@ -230,6 +231,10 @@ type PlaceOrderResult =
         | { code: "invalid_items" }
         | { code: "unexpected" } };
 ```
+
+**`menuSubtotal`, not `total`.** The value is the sum of the menu items at the prices the database had when the order was placed. It is not what the restaurant charges: service, cover and tips are handled outside the system (payments are out of scope). The database column and the RPC's JSON key stay `total` (production already has them; renaming would need another hand-applied migration), and only the adapter knows that name. Domain, use case, action and UI say `menuSubtotal`, and the UI must not present it as the final amount. Open question for the owner interviews: how does a restaurant handle these extras today?
+
+**Input that fails Zod** never reaches the port. `toPlaceOrderError` answers as the database would: a bad `tableToken` is `invalid_table`, anything else `invalid_items`. No separate validation code exists for now.
 
 **Adapter error mapping:** `supabase.rpc('place_order', ...)` returns `{ data, error }`. If `error.message` is one of the known codes, map it to the domain error (parsing `error.details` for `itemIds`). Anything else becomes `unexpected` and is logged server-side.
 
@@ -324,7 +329,7 @@ Each task should be a separate Claude Code session with tests written in the sam
 |---|---|---|
 | F1-1 | Migration (tables, enum, indexes, RLS, grants) + dev seed | Applies cleanly to a fresh DB. Seed creates 3 tables with readable tokens (`dev-table-1..3`) and an open session on each. `anon` has no direct access. |
 | F1-2 | `place_order` + `get_table_status` RPCs + integration tests | Tests 1-15 above pass in CI-runnable form. |
-| F1-3 | Domain errors, port, use cases, Supabase adapter, Zod schema, `publicAction`, `placeOrderAction` | Unit tests for schema, use case and error mapping pass. Architecture rules still hold. |
+| F1-3 | Domain errors, port, `place-order` use case, Supabase adapter, Zod schema, `placeOrderAction` (`get-table-status` moved to F1-6) | Unit tests for schema, use case and error mapping pass. Architecture rules still hold. |
 | F1-4 | `/admin/tables`: list, open, close, dev link | Open on an already-open table fails cleanly. Admin-only. |
 | F1-5 | Cart reducer + provider + `sessionStorage` persistence | Reducer unit tests pass. No hydration warnings. |
 | F1-6 | `/t/[token]` page: table status, read-only mode, cart UI, submit, confirmation, error handling | Manual flow: open table in admin, order from `/t/dev-table-1`, see row in DB. Each error in section 8 reachable and handled. |
