@@ -6,6 +6,7 @@ import { getUseCases } from "@/composition/request-scope";
 const SECTIONS = [
   { href: "/admin/categories", label: "Categorías", description: "Organizá las secciones de la carta." },
   { href: "/admin/items", label: "Platos", description: "Cargá platos, precios y disponibilidad." },
+  { href: "/admin/tables", label: "Mesas", description: "Abrí y cerrá mesas y copiá el link de cada una." },
   { href: "/admin/settings", label: "Ajustes", description: "Datos del restaurante, contacto y publicación." },
 ] as const;
 
@@ -45,7 +46,7 @@ export default async function AdminPage(): Promise<React.JSX.Element> {
         {soldOutCount > 0 && ` · ${soldOutCount} ${soldOutCount === 1 ? "agotado" : "agotados"}`}
       </p>
 
-      <div className="mt-10 grid gap-px border border-rule bg-rule sm:grid-cols-3">
+      <div className="mt-10 grid gap-px border border-rule bg-rule sm:grid-cols-2">
         {SECTIONS.map((section) => (
           <Link
             key={section.href}

@@ -8,13 +8,16 @@
 // like SupabaseTagRepository's case-insensitive matching. That's exercised
 // only by the real adapter's integration test.
 import { Category } from "@/domain/entities/category";
+import { DiningTable } from "@/domain/entities/dining-table";
 import { MenuItem } from "@/domain/entities/menu-item";
 import { Restaurant } from "@/domain/entities/restaurant";
 import { Tag } from "@/domain/entities/tag";
 import type { PlacedOrder } from "@/domain/entities/placed-order";
 import { UnauthorizedError } from "@/domain/errors/domain-errors";
+import { AlreadyOpenError, DuplicateTableNumberError } from "@/domain/errors/table-errors";
 import type { AuthProvider, SessionUser } from "@/application/ports/auth-provider";
 import type { CategoryRepository } from "@/application/ports/category-repository";
+import type { DiningTableRepository } from "@/application/ports/dining-table-repository";
 import type { MenuItemRepository } from "@/application/ports/menu-item-repository";
 import type { OrderRepository, PlaceOrderCommand } from "@/application/ports/order-repository";
 import type { RestaurantRepository } from "@/application/ports/restaurant-repository";
@@ -195,5 +198,70 @@ export class FakeOrderRepository implements OrderRepository {
     this.placed.push(command);
     if (this.failWith) throw this.failWith;
     return this.result;
+  }
+}
+
+export class FakeDiningTableRepository implements DiningTableRepository {
+  private readonly tables = new Map<string, DiningTable>();
+  // Every call that reaches the repository, so tests can assert "never touched".
+  readonly calls: string[] = [];
+  readonly openedFor: { tableId: string; restaurantId: string }[] = [];
+
+  seed(table: DiningTable): void {
+    this.tables.set(table.id, table);
+  }
+
+  async findByRestaurant(restaurantId: string): Promise<DiningTable[]> {
+    this.calls.push("findByRestaurant");
+    return [...this.tables.values()]
+      .filter((t) => t.restaurantId === restaurantId)
+      .sort((a, b) => a.tableNumber - b.tableNumber);
+  }
+
+  async findById(id: string): Promise<DiningTable | null> {
+    this.calls.push("findById");
+    return this.tables.get(id) ?? null;
+  }
+
+  async create(input: { restaurantId: string; tableNumber: number }): Promise<DiningTable> {
+    this.calls.push("create");
+    const duplicate = [...this.tables.values()].some(
+      (t) => t.restaurantId === input.restaurantId && t.tableNumber === input.tableNumber,
+    );
+    if (duplicate) throw new DuplicateTableNumberError();
+    const table = DiningTable.create({
+      id: crypto.randomUUID(),
+      restaurantId: input.restaurantId,
+      tableNumber: input.tableNumber,
+      qrToken: crypto.randomUUID().replaceAll("-", ""),
+      isOpen: false,
+    });
+    this.tables.set(table.id, table);
+    return table;
+  }
+
+  async openSession(input: { tableId: string; restaurantId: string }): Promise<void> {
+    this.calls.push("openSession");
+    this.openedFor.push(input);
+    const table = this.tables.get(input.tableId);
+    if (!table) return;
+    if (table.isOpen) throw new AlreadyOpenError();
+    this.tables.set(table.id, this.withOpen(table, true));
+  }
+
+  async closeSession(tableId: string): Promise<void> {
+    this.calls.push("closeSession");
+    const table = this.tables.get(tableId);
+    if (table) this.tables.set(table.id, this.withOpen(table, false));
+  }
+
+  private withOpen(table: DiningTable, isOpen: boolean): DiningTable {
+    return DiningTable.create({
+      id: table.id,
+      restaurantId: table.restaurantId,
+      tableNumber: table.tableNumber,
+      qrToken: table.qrToken,
+      isOpen,
+    });
   }
 }
