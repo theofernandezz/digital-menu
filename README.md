@@ -11,7 +11,7 @@ Built as a portfolio project to demonstrate specific skills in a real, working a
   - Email: `admin@digitalmenu.local`
   - Password: `OS7ZUp5bFIKwdayKh2gMBD`
 
-This is the same account CI signs in as for the integration/e2e suites — data may get reset or briefly altered by a test run. Please don't change the restaurant's core info (name/description); toggling item availability or adding a throwaway category is fine.
+This is a shared demo account, so data may be altered by other visitors (CI and the test suites run against a local Supabase stack and no longer touch it). Please don't change the restaurant's core info (name/description); toggling item availability or adding a throwaway category is fine.
 
 ## Stack
 
@@ -19,7 +19,7 @@ This is the same account CI signs in as for the integration/e2e suites — data 
 - **Database & Auth:** Supabase (Postgres) — Row Level Security, single admin user, no customer accounts
 - **Styling:** Tailwind CSS v4 + Radix primitives
 - **Validation:** Zod, at every trust boundary
-- **Testing:** Vitest (unit + integration against a real Supabase project) + Playwright (e2e)
+- **Testing:** Vitest (unit + integration against a local Supabase stack) + Playwright (e2e)
 - **Local dev:** Docker Compose
 - **CI/CD:** GitHub Actions
 - **Deployment:** Vercel
@@ -43,45 +43,47 @@ This app deliberately targets a specific set of skills rather than maximizing fe
 domain/        entity classes + invariants, zero framework imports
 application/   outbound ports (interfaces) + use cases, Zod-validated input
 adapters/      driven/supabase/ — the ONLY place the Supabase client is constructed
-composition/   container.ts — wires use cases to Supabase adapters
+composition/   one wiring file per module + getUseCases(), the only thing app/ imports
 app/           Next.js App Router — routes + colocated Server Actions (the driving adapter)
 components/    Atomic Design: atoms/ molecules/ organisms/ templates/, presentation only
 ```
 
-Dependency direction points inward only: `adapters` → `application` → `domain`. Full write-up, the outbound-ports-only rule, and a vertical slice example in [`docs/architecture.md`](docs/architecture.md).
+Dependency direction points inward only: `adapters` → `application` → `domain`. Full write-up, the outbound-ports-only rule, and a vertical slice example in [`docs/architecture.md`](docs/architecture.md). The boundaries are enforced by ESLint rather than by convention, and [`docs/architecture-map.md`](docs/architecture-map.md) maps the layers, modules and request flows.
 
 ## Data model
 
-`restaurants` → `categories` → `menu_items`, plus `tags`/`menu_item_tags` as a many-to-many. Full DDL and RLS policies in [`structure.sql`](structure.sql); reasoning in [`docs/build-plan.md`](docs/build-plan.md).
+`restaurants` → `categories` → `menu_items`, plus `tags`/`menu_item_tags` as a many-to-many. Full DDL and RLS policies in [`supabase/migrations/`](supabase/migrations/); reasoning in [`docs/build-plan.md`](docs/build-plan.md).
 
 Two access levels: **public** (unauthenticated, read-only, sees every item regardless of `is_available`) and **admin** (authenticated owner, full CRUD). `is_published` on `restaurants` gates visibility; `is_available` on `menu_items` is a "sold out" UI state and does *not* hide the item.
 
 ## Getting started
 
-Requires Docker and a Supabase project.
+Requires Docker and the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started). Development and tests run against a local Supabase stack, not a hosted project.
 
 ```bash
+supabase start   # applies supabase/migrations and supabase/seed.sql (admin: admin@local.test / local-admin-password)
+
 cp .env.example .env.local
-# fill in NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-# SUPABASE_SERVICE_ROLE_KEY, ADMIN_EMAIL, ADMIN_PASSWORD
+# fill in NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY
+# from `supabase status -o env` (the local keys are fixed public demo keys)
 
 docker compose up --build
 ```
 
-App runs at [http://localhost:3000](http://localhost:3000). Apply `structure.sql` to your Supabase project's SQL Editor before first run (schema + RLS policies + Data API grants).
+App runs at [http://localhost:3000](http://localhost:3000). `supabase db reset` restores the seeded state. Migrations reach a hosted project by hand through its SQL Editor (the baseline migration is what that project already has — apply only newer ones).
 
 ## Testing
 
 ```bash
 pnpm test              # unit — domain/application use cases (in-memory fakes) + components
-pnpm test:integration  # integration — real Supabase project
-pnpm test:e2e          # e2e — Playwright, runs from the host against the container
+pnpm test:integration  # integration — local Supabase (run `supabase start` first)
+pnpm test:e2e          # e2e — Playwright, runs from the host against the container (also needs `supabase start`)
 pnpm test:all          # all three
 ```
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs type-check, lint, and all three test suites on every push/PR against `main`, using the same Docker image as local dev. A `concurrency` group cancels overlapping runs, since integration/e2e tests sign in as the same real admin account against the same real Supabase project.
+`.github/workflows/ci.yml` runs type-check, lint, and all three test suites on every push/PR against `main`, using the same Docker image as local dev. Each run starts its own throwaway local Supabase stack (`supabase start`, seeded from `supabase/seed.sql`), so no hosted-project secrets are needed. A `concurrency` group cancels overlapping runs to save runner minutes.
 
 ## License
 

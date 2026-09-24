@@ -1,11 +1,14 @@
-import { requireAuth } from "@/adapters/driven/supabase/require-auth";
+import { redirect } from "next/navigation";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { signOutAction } from "@/app/admin/actions";
 import { Button } from "@/components/atoms/button";
 import { Rule } from "@/components/atoms/rule";
+import { getUseCases } from "@/composition/request-scope";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">): Promise<React.JSX.Element> {
-  const user = await requireAuth();
+  const { identity } = await getUseCases();
+  const user = await identity.getCurrentUser.execute();
+  if (!user) redirect("/login");
 
   return (
     <div className="flex flex-1 flex-col">

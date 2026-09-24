@@ -216,6 +216,8 @@ If this block is missing, UX work is incomplete.
 
 ## File Structure
 
+> Suggested default, not mandatory. In hexagonal projects (`hexagonal-architecture`), colocate dashboard components next to their route (`app/<route>/*.tsx`) and Server Actions in `app/<route>/actions.ts` — no `components/dashboard/` or `lib/actions/`.
+
 ```
 components/
   dashboard/

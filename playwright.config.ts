@@ -12,6 +12,10 @@ process.loadEnvFile(".env.local");
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false, // shares one real admin account/session, like the integration tests
+  // fullyParallel: false only serializes tests inside a file. Every spec logs in as the
+  // same admin and admin-lifecycle signs out at the end, which revokes that user's
+  // sessions: with several spec files running at once it kills the others' session.
+  workers: 1,
   reporter: "list",
   use: {
     baseURL: "http://localhost:3000",

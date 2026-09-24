@@ -4,7 +4,7 @@ import { NotFoundError, UnauthorizedError, CategoryMismatchError } from "@/domai
 import type { MenuItemRepository } from "@/application/ports/menu-item-repository";
 import type { CategoryRepository } from "@/application/ports/category-repository";
 import type { AuthProvider } from "@/application/ports/auth-provider";
-import { menuItemSchema } from "@/application/use-cases/create-menu-item";
+import { menuItemSchema } from "@/application/schemas/menu-item";
 
 // isAvailable is a real z.boolean() here, not z.coerce.boolean() — an
 // unchecked HTML checkbox sends no key at all in FormData, and

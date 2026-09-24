@@ -1,16 +1,7 @@
-import { z } from "zod";
 import { Category } from "@/domain/entities/category";
 import type { CategoryRepository } from "@/application/ports/category-repository";
 import type { AuthProvider } from "@/application/ports/auth-provider";
-
-// Shared by create and update — this project requires the same fields on
-// both (docs/crud-auth.md), so there's no .pick()/.partial() variant.
-export const categorySchema = z.object({
-  restaurantId: z.string().uuid(),
-  name: z.string().min(1).max(100).trim(),
-  description: z.string().max(500).trim().nullable().optional(),
-});
-export type CategoryInput = z.infer<typeof categorySchema>;
+import { categorySchema } from "@/application/schemas/category";
 
 export class CreateCategoryUseCase {
   constructor(

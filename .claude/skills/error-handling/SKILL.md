@@ -170,18 +170,27 @@ export class RateLimitError extends AppError {
 
 ### 2. Error Handling in Server Actions
 
+**One return shape for every Server Action in the library** — `nextjs-core` and `database` use it too:
+
+```typescript
+// lib/action-result.ts
+export type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: { code: string; message: string; fields?: Record<string, string[] | undefined> } }
+```
+
+Forms wired to `useActionState` take `prevState` as the first parameter; the return shape is the same.
+
 ```typescript
 // lib/actions/projects.ts
 'use server'
 
 import { AppError, ValidationError } from '@/lib/errors'
+import type { ActionResult } from '@/lib/action-result'
 import { logger } from '@/lib/logger'
 
-export type ActionResult<T> = 
-  | { success: true; data: T }
-  | { success: false; error: { code: string; message: string; fields?: Record<string, string[]> } }
-
 export async function createProject(
+  _prevState: ActionResult<Project> | null,
   formData: FormData
 ): Promise<ActionResult<Project>> {
   try {

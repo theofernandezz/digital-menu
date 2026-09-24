@@ -6,7 +6,7 @@ description: |
 license: MIT
 metadata:
   author: ai-library
-  version: "2.1"
+  version: "2.2"
   scope: [root, backend, auth]
   auto_invoke:
     - "Handling user input"
@@ -26,6 +26,7 @@ metadata:
 
 | Version | Change | Affects |
 |---------|--------|---------|
+| 2.2 (2026-09-23) | Next.js 16 renamed `middleware.ts` → `proxy.ts` (export `proxy`, Node.js runtime) — security-headers example updated; on Next.js 15 or earlier keep `middleware.ts` | proxy.ts |
 | 2.1 (2026-03-31) | `X-XSS-Protection` removed — OWASP 2025 recommends omitting it (can introduce XSS in IE/Chrome <78) | middleware.ts |
 | 2.1 (2026-03-31) | In-memory rate limiter is serverless-unsafe — use Upstash/Redis in production | rate-limit.ts |
 | 2.1 (2026-03-31) | CSP `unsafe-eval` + `unsafe-inline` flagged by OWASP 2025 — prefer nonce-based CSP | middleware.ts |
@@ -174,14 +175,14 @@ export function validateUserInput(data: unknown) {
 }
 ```
 
-### 2. Security Headers (Middleware)
+### 2. Security Headers (Proxy)
 
 ```typescript
-// middleware.ts
+// proxy.ts (middleware.ts on Next.js 15 and earlier — see `nextjs-core`)
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next()
   
   // Security headers
@@ -486,7 +487,7 @@ lib/
 │   └── *.ts               # Zod schemas for all inputs
 └── env.ts                 # Environment validation
 
-middleware.ts              # Security headers, auth refresh
+proxy.ts                   # Security headers, auth refresh
 ```
 
 ---
@@ -497,7 +498,7 @@ middleware.ts              # Security headers, auth refresh
 - [ ] No `dangerouslySetInnerHTML` with user content
 - [ ] Parameterized queries only (no string interpolation)
 - [ ] Server-side auth checks on all protected routes
-- [ ] Security headers configured in middleware
+- [ ] Security headers configured in `proxy.ts`
 - [ ] `X-XSS-Protection` NOT set (OWASP 2025 recommendation)
 - [ ] CSP uses nonces instead of `unsafe-inline`/`unsafe-eval` where possible
 - [ ] Rate limiting on sensitive endpoints (Upstash/Redis in serverless)

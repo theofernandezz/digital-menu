@@ -252,29 +252,8 @@ EOF
         echo -e "${YELLOW}  CLAUDE.md already exists${NC}"
     fi
 
-    # Create agents directory if not exists
-    mkdir -p "$ROOT_DIR/agents"
-
-    # Copy agent files if they exist in old locations
-    if [ -f "$ROOT_DIR/ui/AGENTS.md" ] && [ ! -f "$ROOT_DIR/agents/ui.md" ]; then
-        cp "$ROOT_DIR/ui/AGENTS.md" "$ROOT_DIR/agents/ui.md"
-        echo -e "${GREEN}  Created agents/ui.md${NC}"
-    fi
-
-    if [ -f "$ROOT_DIR/backend/AGENTS.md" ] && [ ! -f "$ROOT_DIR/agents/backend.md" ]; then
-        cp "$ROOT_DIR/backend/AGENTS.md" "$ROOT_DIR/agents/backend.md"
-        echo -e "${GREEN}  Created agents/backend.md${NC}"
-    fi
-
-    if [ -f "$ROOT_DIR/auth/AGENTS.md" ] && [ ! -f "$ROOT_DIR/agents/auth.md" ]; then
-        cp "$ROOT_DIR/auth/AGENTS.md" "$ROOT_DIR/agents/auth.md"
-        echo -e "${GREEN}  Created agents/auth.md${NC}"
-    fi
-
-    if [ -f "$ROOT_DIR/testing/AGENTS.md" ] && [ ! -f "$ROOT_DIR/agents/testing.md" ]; then
-        cp "$ROOT_DIR/testing/AGENTS.md" "$ROOT_DIR/agents/testing.md"
-        echo -e "${GREEN}  Created agents/testing.md${NC}"
-    fi
+    # agents/*.md are generated from .claude/agents/*.md — run ./generate-agents.sh,
+    # not this script, to (re)create them.
 
     # Create skills index if not exists
     if [ ! -f "$SCRIPT_DIR/_index.md" ]; then
@@ -305,7 +284,7 @@ EOF
 | Skill | Path | Propósito |
 |-------|------|-----------|
 | `skill-creator` | `skill-creator/SKILL.md` | Crear nuevos skills |
-| `skill-sync` | `skill-sync/SKILL.md` | Sincronizar a AGENTS.md |
+| `skill-sync` | `skill-sync/SKILL.md` | Verificar registro de skills |
 | `feedback-loop` | `feedback-loop/SKILL.md` | Capturar mejoras |
 
 *Skills Index v1.0*

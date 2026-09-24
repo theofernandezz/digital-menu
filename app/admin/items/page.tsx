@@ -1,19 +1,18 @@
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/adapters/driven/supabase/client";
 import { getMyRestaurant } from "@/app/admin/get-restaurant";
 import { toCategoryViewModel, toMenuItemViewModel } from "@/app/admin/view-models";
-import { listCategoriesUseCase, listMenuItemsUseCase, listMenuItemTagsUseCase } from "@/composition/container";
+import { getUseCases } from "@/composition/request-scope";
 import { MenuItemForm } from "@/app/admin/items/item-form";
 import { MenuItemList, type MenuItemRow } from "@/app/admin/items/item-list";
 
 export default async function ItemsPage(): Promise<React.JSX.Element> {
   const restaurant = await getMyRestaurant();
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
   const [categories, menuItems] = await Promise.all([
-    listCategoriesUseCase(client)
+    catalog.listCategories
       .execute({ restaurantId: restaurant.id })
       .then((rows) => rows.map(toCategoryViewModel)),
-    listMenuItemsUseCase(client)
+    catalog.listMenuItems
       .execute({ restaurantId: restaurant.id })
       .then((rows) => rows.map(toMenuItemViewModel)),
   ]);
@@ -22,7 +21,7 @@ export default async function ItemsPage(): Promise<React.JSX.Element> {
   // scale (single restaurant, a handful of items).
   const items: MenuItemRow[] = await Promise.all(
     menuItems.map(async (item) => {
-      const tags = await listMenuItemTagsUseCase(client).execute({
+      const tags = await catalog.listMenuItemTags.execute({
         restaurantId: restaurant.id,
         menuItemId: item.id,
       });

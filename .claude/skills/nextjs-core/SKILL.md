@@ -31,6 +31,8 @@ metadata:
 | 16.2.1 | `javascript:` URLs blocked automatically in `router.push`, `redirect`, `<Link>` | Any redirect/navigation code |
 | 15+ → 16 | `params` and `searchParams` are now `Promise<{...}>` — must be `await`-ed | All dynamic routes `[id]` |
 | React 19 | `useFormState` removed — use `useActionState` from `react` (not `react-dom`) | All forms wired to Server Actions |
+| 2.1 | Server Actions return the library-wide `ActionResult<T>` (`{ success, data } \| { success: false, error }`), not `{ errors?, success? }`; forms use `useActionState(action, null)` | Every Server Action and its form |
+| 16 | `middleware.ts` deprecated — renamed `proxy.ts`, export `proxy` (Node.js runtime only; edge stays on `middleware`) | Auth/security-header interceptors |
 
 > **Instruction for Claude:** When working on Server Actions or dynamic routes, check this table and mention any applicable entry to the developer before writing code.
 
@@ -196,25 +198,18 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import type { ActionResult } from '@/lib/action-result'
 
 const updateProfileSchema = z.object({
   name: z.string().min(2).max(100),
   bio: z.string().max(500).optional(),
 })
 
-export type UpdateProfileState = {
-  errors?: {
-    name?: string[]
-    bio?: string[]
-    _form?: string[]
-  }
-  success?: boolean
-}
-
+// ActionResult is the library-wide Server Action return shape — see `error-handling`
 export async function updateProfile(
-  prevState: UpdateProfileState,
+  _prevState: ActionResult | null,
   formData: FormData
-): Promise<UpdateProfileState> {
+): Promise<ActionResult> {
   // 1. Validate input
   const validatedFields = updateProfileSchema.safeParse({
     name: formData.get('name'),
@@ -223,7 +218,12 @@ export async function updateProfile(
 
   if (!validatedFields.success) {
     return {
-      errors: validatedFields.error.flatten().fieldErrors,
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Please check your input',
+        fields: validatedFields.error.flatten().fieldErrors,
+      },
     }
   }
 
@@ -232,7 +232,7 @@ export async function updateProfile(
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
-    return { errors: { _form: ['Unauthorized'] } }
+    return { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }
   }
 
   // 3. Perform mutation
@@ -244,12 +244,12 @@ export async function updateProfile(
 
     if (error) throw error
   } catch (e) {
-    return { errors: { _form: ['Failed to update profile'] } }
+    return { success: false, error: { code: 'UPDATE_FAILED', message: 'Failed to update profile' } }
   }
 
   // 4. Revalidate and respond
   revalidatePath('/settings')
-  return { success: true }
+  return { success: true, data: undefined }
 }
 ```
 
@@ -264,14 +264,13 @@ Use the React 19 `useActionState` hook — `isPending` is built-in as a 3rd retu
 'use client'
 
 import { useActionState } from 'react'
-import { updateProfile, type UpdateProfileState } from '@/lib/actions/user'
+import { updateProfile } from '@/lib/actions/user'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-const initialState: UpdateProfileState = {}
-
 export function ProfileForm({ defaultValues }: { defaultValues: { name: string; bio?: string } }) {
-  const [state, formAction, isPending] = useActionState(updateProfile, initialState)
+  const [state, formAction, isPending] = useActionState(updateProfile, null)
+  const error = state?.success === false ? state.error : undefined
 
   return (
     <form action={formAction} className="space-y-4">
@@ -281,8 +280,8 @@ export function ProfileForm({ defaultValues }: { defaultValues: { name: string; 
           defaultValue={defaultValues.name}
           placeholder="Your name"
         />
-        {state.errors?.name && (
-          <p className="text-sm text-destructive mt-1">{state.errors.name[0]}</p>
+        {error?.fields?.name && (
+          <p className="text-sm text-destructive mt-1">{error.fields.name[0]}</p>
         )}
       </div>
 
@@ -292,18 +291,18 @@ export function ProfileForm({ defaultValues }: { defaultValues: { name: string; 
           defaultValue={defaultValues.bio}
           placeholder="Tell us about yourself"
         />
-        {state.errors?.bio && (
-          <p className="text-sm text-destructive mt-1">{state.errors.bio[0]}</p>
+        {error?.fields?.bio && (
+          <p className="text-sm text-destructive mt-1">{error.fields.bio[0]}</p>
         )}
       </div>
 
-      {state.errors?._form && (
+      {error && !error.fields && (
         <Alert variant="destructive">
-          <AlertDescription>{state.errors._form[0]}</AlertDescription>
+          <AlertDescription>{error.message}</AlertDescription>
         </Alert>
       )}
 
-      {state.success && (
+      {state?.success && (
         <Alert>
           <AlertDescription>Profile updated successfully!</AlertDescription>
         </Alert>
@@ -477,6 +476,8 @@ export default async function UsersPage() {
 
 ## 📁 File Structure Convention
 
+> **Hexagonal projects:** if the project's `CLAUDE.md` declares hexagonal/modular architecture, `hexagonal-architecture` sets the layout instead — Server Actions are colocated in `app/**/actions.ts` and call modules through `composition/`; there is no `lib/actions/`.
+
 ```
 app/
 ├── (marketing)/           # Public pages
@@ -508,20 +509,22 @@ lib/
 └── supabase/
     ├── client.ts          # Browser client
     ├── server.ts          # Server client
-    └── middleware.ts      # Auth middleware
+    └── middleware.ts      # updateSession(), called from proxy.ts
 ```
 
 ---
 
-## 🔒 Middleware Pattern
+## 🔒 Proxy Pattern (formerly Middleware)
+
+Next.js 16 renamed `middleware.ts` → `proxy.ts` and the export `middleware` → `proxy`. The old names still work but are deprecated. `proxy` runs on the Node.js runtime only — if you need the edge runtime, keep `middleware.ts`. Migrate with `npx @next/codemod@canary middleware-to-proxy .`
 
 ```typescript
-// middleware.ts
+// proxy.ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Refresh auth session
   const response = await updateSession(request)
   

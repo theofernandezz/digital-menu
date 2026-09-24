@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerSupabaseClient } from "@/adapters/driven/supabase/client";
-import { updateRestaurantUseCase } from "@/composition/container";
+import { getUseCases } from "@/composition/request-scope";
 import { toFormErrors, type FieldErrors } from "@/app/admin/action-helpers";
 
 export type RestaurantFormState = {
@@ -14,10 +13,10 @@ export async function updateRestaurantAction(
   _prevState: RestaurantFormState,
   formData: FormData,
 ): Promise<RestaurantFormState> {
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
 
   try {
-    await updateRestaurantUseCase(client).execute({
+    await catalog.updateRestaurant.execute({
       restaurantId: formData.get("restaurantId"),
       name: formData.get("name"),
       slug: formData.get("slug"),
@@ -41,9 +40,9 @@ export async function updateRestaurantAction(
 // is the risky direction and goes through updateRestaurantAction + a confirm
 // dialog instead (see publish-toggle.tsx).
 export async function publishRestaurantAction(formData: FormData): Promise<void> {
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
 
-  await updateRestaurantUseCase(client).execute({
+  await catalog.updateRestaurant.execute({
     restaurantId: formData.get("restaurantId"),
     name: formData.get("name"),
     slug: formData.get("slug"),

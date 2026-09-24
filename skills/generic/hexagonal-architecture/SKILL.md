@@ -1,28 +1,30 @@
 ---
-name: Hexagonal Architecture - Ports & Adapters
+name: Hexagonal Architecture - Modules, Ports & Adapters
 description: |
-  Pragmatic ports & adapters for Next.js: isolate external integrations (payment gateways, email,
-  storage, data access) behind interfaces the core never breaks out of, enforced by ESLint — not by
-  convention. No DI container, no domain/persistence mapping unless real business logic needs it.
-  Trigger: Activated when integrating an external service/gateway, when asked for hexagonal/ports-adapters/
-  clean architecture, or when a module needs to be swappable (e.g. Stripe ↔ Mercado Pago).
+  Modular hexagonal architecture for Next.js: the app is split into modules that talk to the outside
+  only through one public interface (index.ts) and never import each other. Inside a module,
+  domain/application depend on ports (interfaces); adapters implement them. Boundaries are enforced
+  by ESLint, not by convention. No DI container.
+  Trigger: Activated when asked for hexagonal/ports-adapters/clean/modular architecture, when creating
+  a module, or when integrating an external service (payments, email, storage) that must be swappable.
 license: MIT
 metadata:
   author: ai-library
-  version: "1.0"
+  version: "2.0"
   scope: [root, backend]
   auto_invoke:
-    - "Integrating a payment gateway or external service"
     - "Applying hexagonal architecture"
     - "Applying ports and adapters"
     - "Applying clean architecture"
+    - "Creating a new module or bounded context"
+    - "Integrating a payment gateway or external service"
     - "Making a module swappable between providers"
     - "Isolating business logic from an SDK"
 ---
 
-# Hexagonal Architecture - Ports & Adapters
+# Hexagonal Architecture - Modules, Ports & Adapters
 
-> **Core Principle:** The core never imports a concrete implementation — only the interface (port) it needs. Isolation is enforced by the compiler and the linter, not by hoping the next change respects a convention.
+> **Core Principle:** A module is reachable only through its public interface, and it knows nothing about any other module. Changing the inside of one module can never force a change in another — and the linter, not memory, is what guarantees it.
 
 ---
 
@@ -32,232 +34,236 @@ metadata:
 
 | Version | Change | Affects |
 |---------|--------|---------|
+| 2.0 | Module-first layout (`modules/<name>/`) replaces `lib/core` + `lib/adapters` + `lib/composition.ts`. Full hexagonal scope, not only external integrations. Modules never import each other; the consumer owns the port. | Projects on the 1.0 layout |
 | 1.0 | Initial skill | — |
 
 ---
 
 ## 🏗️ When to Use This
 
+**This skill sets the layout only for projects that adopt it** — declared in the project's `CLAUDE.md` (Project Context) or requested by the user. Otherwise `nextjs-core`/`database` layouts apply.
+
+**Is it a module?** Yes if it has business rules of its own **and** could change without the rest changing (cart, payments, inventory, bookings). No if it is plain CRUD with no rules of its own (menu categories, settings): keep it colocated in `app/` with a plain service — ports there are ceremony without a payoff.
+
+A single swappable integration (Stripe ↔ Mercado Pago) is just one module (`modules/payments/`); you don't need to modularize the whole app to use it.
+
+**No DI container.** It solves wiring convenience, not isolation. Wire by hand in `composition/`.
+
+---
+
+## 📁 Layout
+
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│         Does this touch an external service/SDK, or could         │
-│         the implementation plausibly be swapped later?             │
-│                                                                     │
-│         NO                                        YES              │
-│          │                                          │              │
-│          ▼                                          ▼              │
-│   Plain service layer                    Port + Adapter            │
-│   (see `backend`/`database`/                                       │
-│    `prisma` skills — no port)                                      │
-│                                                                     │
-│   • Internal CRUD                        • Payment gateways        │
-│   • Business rules with                  • Email/notification      │
-│     one obvious implementation             providers               │
-│   • No swap ever planned                 • File/object storage     │
-│                                           • Data access layer       │
-│                                           • Any third-party API     │
-│                                             you might replace       │
-└──────────────────────────────────────────────────────────────────┘
+modules/
+  <name>/
+    index.ts          # the ONLY public file: a factory + public types
+    domain/           # entities, value objects, business rules — imports nothing outside domain/
+    application/      # use cases + the ports this module needs (it owns them)
+    adapters/         # implementations of those ports: DB repository, SDK clients
+app/                  # delivery: pages + colocated actions.ts — reach modules via composition/
+composition/          # the only place that wires adapters to ports and modules to each other
+components/, lib/     # shared UI and pure utilities — no business rules, never import module internals
 ```
 
-Don't reach for this on a module that only ever talks to your own database with no real alternative implementation in sight — that's what the plain `Service Layer` pattern in `backend`/`data` agents already covers. Adding ports there is ceremony without a payoff.
-
-**No DI container.** A container solves *wiring convenience*, not isolation — the interface plus the ESLint rule below is what actually stops hidden coupling. A container adds a dependency and a layer of indirection an AI has to reason about for no isolation gain in a Next.js-sized app. Wire adapters by hand in a single composition root (see below).
+Using `src/`? Prefix every path (`src/modules/...`) in the layout and in the ESLint patterns below.
 
 ---
 
 ## 🚫 FORBIDDEN PATTERNS
 
-### 1. Never Import a Concrete Adapter from Core/Application Code
+### 1. Never Import One Module from Another
 
 ```typescript
-// ❌ FORBIDDEN - core service knows about Stripe directly
-// lib/core/services/checkout.service.ts
+// ❌ FORBIDDEN - cart now depends on payments existing, even through its public api
+// modules/cart/application/checkout.ts
+import { createPaymentsModule } from '@/modules/payments'
+
+// ✅ CORRECT - cart depends on a port it owns; composition/ decides who fulfils it
+// modules/cart/application/checkout.ts
+import type { ChargePort } from './ports'
+```
+
+### 2. Never Reach Into a Module's Internals
+
+Everything outside `modules/<name>/` imports only `modules/<name>/index.ts` (composition/ also imports its `adapters/`, to wire them).
+
+```typescript
+// ❌ FORBIDDEN - bypasses the public interface; any refactor of application/ now breaks this file
+import { checkout } from '@/modules/cart/application/checkout'
+
+// ✅ CORRECT
+import { cart } from '@/composition'
+```
+
+### 3. Never Import a Concrete Adapter or SDK from domain/application
+
+```typescript
+// ❌ FORBIDDEN
+// modules/payments/application/charge.ts
 import Stripe from 'stripe'
 
-export async function checkout(orderId: string, amount: number) {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-  await stripe.paymentIntents.create({ amount, currency: 'usd' })
-}
-
-// ✅ CORRECT - core depends only on the port
-// lib/core/services/checkout.service.ts
-import type { PaymentGatewayPort } from '@/lib/core/ports/payment-gateway.port'
-
-export async function checkout(
-  gateway: PaymentGatewayPort,
-  orderId: string,
-  amount: number,
-) {
-  await gateway.charge({ orderId, amount })
-}
+// ✅ CORRECT - depend on the port; the adapter is the only file that knows Stripe
+import type { PaymentProviderPort } from './ports'
 ```
 
-### 2. Never Leak Adapter-Specific Types Through a Port
+### 4. Never Leak Adapter-Specific Types Through a Port
 
 ```typescript
-// ❌ FORBIDDEN - the port signature forces every caller/adapter to know Stripe's shape
-interface PaymentGatewayPort {
-  charge(input: Stripe.PaymentIntentCreateParams): Promise<Stripe.PaymentIntent>
-}
+// ❌ FORBIDDEN
+interface PaymentProviderPort { charge(input: Stripe.PaymentIntentCreateParams): Promise<Stripe.PaymentIntent> }
 
-// ✅ CORRECT - the port speaks your domain's language, not any SDK's
-interface PaymentGatewayPort {
-  charge(input: ChargeInput): Promise<ChargeResult>
-}
-
-interface ChargeInput { orderId: string; amount: number; currency: string }
-interface ChargeResult { transactionId: string; status: 'approved' | 'declined' }
+// ✅ CORRECT - ports speak the module's language, not an SDK's
+interface PaymentProviderPort { charge(input: { reference: string; amount: number }): Promise<{ id: string; approved: boolean }> }
 ```
 
-### 3. Never Wire Adapters in More Than One Place
+### 5. Never Touch Another Module's Data
 
-```typescript
-// ❌ FORBIDDEN - two composition roots drift out of sync
-// app/api/checkout/route.ts
-const gateway = new StripePaymentAdapter(process.env.STRIPE_KEY!)
+Each module owns its tables/models; only its own `adapters/` read or write them. Need another module's data? Ask through composition/ (a port), never a query on its table.
 
-// lib/actions/checkout.ts
-const gateway = new StripePaymentAdapter(process.env.STRIPE_KEY!) // duplicated, easy to fork
+> **Known limit:** with one Prisma client/schema this is **not** enforceable by ESLint — it is a rule enforced by review and `verifier`. // TODO: revisit if a module ever needs its own database.
 
-// ✅ CORRECT - one composition root, everyone imports the wired instance
-// lib/composition.ts
-export const paymentGateway: PaymentGatewayPort = new StripePaymentAdapter(process.env.STRIPE_KEY!)
+### 6. Never Wire Adapters Outside composition/
 
-// everywhere else
-import { paymentGateway } from '@/lib/composition'
-```
+Two places that `new` an adapter drift out of sync. Everyone else imports the wired instance from `@/composition`.
 
 ---
 
 ## ✅ REQUIRED PATTERNS
 
-### 1. Define the Port
+### 1. Public Interface — index.ts
 
 ```typescript
-// lib/core/ports/payment-gateway.port.ts
-export interface ChargeInput {
-  orderId: string
-  amount: number
-  currency: string
-}
+// modules/cart/index.ts
+import { checkout } from './application/checkout'
+import type { CartDeps } from './application/ports'
 
-export interface ChargeResult {
-  transactionId: string
-  status: 'approved' | 'declined'
-}
+export type { CartDeps, ChargePort } from './application/ports'
+export type { Cart } from './domain/cart'
 
-export interface PaymentGatewayPort {
-  charge(input: ChargeInput): Promise<ChargeResult>
+export function createCartModule(deps: CartDeps) {
+  return { checkout: (cartId: string) => checkout(deps, cartId) }
 }
 ```
 
-### 2. Implement Interchangeable Adapters
+Export a factory and public types only — never entities, repositories or use-case files.
+
+### 2. The Consumer Owns the Port
 
 ```typescript
-// lib/adapters/stripe-payment.adapter.ts
-import Stripe from 'stripe'
-import type { PaymentGatewayPort, ChargeInput, ChargeResult } from '@/lib/core/ports/payment-gateway.port'
-
-export class StripePaymentAdapter implements PaymentGatewayPort {
-  private stripe: Stripe
-  constructor(secretKey: string) {
-    this.stripe = new Stripe(secretKey)
-  }
-
-  async charge({ orderId, amount, currency }: ChargeInput): Promise<ChargeResult> {
-    const intent = await this.stripe.paymentIntents.create({
-      amount, currency, metadata: { orderId },
-    })
-    return {
-      transactionId: intent.id,
-      status: intent.status === 'succeeded' ? 'approved' : 'declined',
-    }
-  }
+// modules/cart/application/ports.ts — cart says what IT needs, in its own words
+export interface ChargePort {
+  charge(input: { orderId: string; amountCents: number }): Promise<{ transactionId: string; approved: boolean }>
 }
+export interface CartRepositoryPort { findById(id: string): Promise<Cart | null> }
+export interface CartDeps { repo: CartRepositoryPort; charge: ChargePort }
 ```
 
 ```typescript
-// lib/adapters/mercadopago-payment.adapter.ts
-import { MercadoPagoConfig, Payment } from 'mercadopago'
-import type { PaymentGatewayPort, ChargeInput, ChargeResult } from '@/lib/core/ports/payment-gateway.port'
-
-export class MercadoPagoPaymentAdapter implements PaymentGatewayPort {
-  private client: Payment
-  constructor(accessToken: string) {
-    this.client = new Payment(new MercadoPagoConfig({ accessToken }))
-  }
-
-  async charge({ orderId, amount, currency }: ChargeInput): Promise<ChargeResult> {
-    const payment = await this.client.create({
-      body: { transaction_amount: amount, description: orderId, payment_method_id: 'pix' },
-      requestOptions: { idempotencyKey: `order-${orderId}` },
-    })
-    return {
-      transactionId: String(payment.id),
-      status: payment.status === 'approved' ? 'approved' : 'declined',
-    }
-  }
+// modules/cart/application/checkout.ts — knows the port, not payments
+export async function checkout({ repo, charge }: CartDeps, cartId: string) {
+  const cart = await repo.findById(cartId)
+  if (!cart) throw new CartNotFoundError(cartId)
+  return charge.charge({ orderId: cart.id, amountCents: cart.totalCents })
 }
 ```
 
-The core service (`checkout.service.ts` above) never changes when you add, remove, or swap a payment provider — only the composition root does.
+`payments` is built the same way: its own `PaymentProviderPort` in `application/ports.ts`, `StripeProviderAdapter` in `adapters/`, a `createPaymentsModule({ provider })` factory in `index.ts`. It never mentions carts.
 
-### 3. Composition Root — the Only File Allowed to Know Both Sides
-
-```typescript
-// lib/composition.ts
-import type { PaymentGatewayPort } from '@/lib/core/ports/payment-gateway.port'
-import { StripePaymentAdapter } from '@/lib/adapters/stripe-payment.adapter'
-import { MercadoPagoPaymentAdapter } from '@/lib/adapters/mercadopago-payment.adapter'
-
-export const paymentGateway: PaymentGatewayPort =
-  process.env.PAYMENT_PROVIDER === 'mercadopago'
-    ? new MercadoPagoPaymentAdapter(process.env.MERCADOPAGO_ACCESS_TOKEN!)
-    : new StripePaymentAdapter(process.env.STRIPE_SECRET_KEY!)
-```
-
-### 4. Testing — Fake Adapters, No Real API Calls
+### 3. Composition Root — the Only File That Knows Both Sides
 
 ```typescript
-// lib/core/services/checkout.service.test.ts
-import type { PaymentGatewayPort } from '@/lib/core/ports/payment-gateway.port'
-import { checkout } from './checkout.service'
+// composition/index.ts
+import { env } from '@/lib/env'
+import { createCartModule } from '@/modules/cart'
+import { PrismaCartRepository } from '@/modules/cart/adapters/prisma-cart.repository'
+import { createPaymentsModule } from '@/modules/payments'
+import { StripeProviderAdapter } from '@/modules/payments/adapters/stripe-provider.adapter'
 
-class FakePaymentGateway implements PaymentGatewayPort {
-  async charge() {
-    return { transactionId: 'fake-txn-1', status: 'approved' as const }
-  }
-}
+const payments = createPaymentsModule({ provider: new StripeProviderAdapter(env.STRIPE_SECRET_KEY) })
 
-it('should approve checkout when gateway approves', async () => {
-  const result = await checkout(new FakePaymentGateway(), 'order-1', 100)
-  expect(result.status).toBe('approved')
+export const cart = createCartModule({
+  repo: new PrismaCartRepository(),
+  // The translation between the two vocabularies lives here — in neither module
+  charge: {
+    async charge({ orderId, amountCents }) {
+      const result = await payments.charge({ reference: orderId, amount: amountCents })
+      return { transactionId: result.id, approved: result.approved }
+    },
+  },
 })
 ```
 
-No mocking library, no test doubles wired into an SDK, no network calls — the fake just implements the same port.
+Swapping Stripe for Mercado Pago, or changing how `payments` works internally, touches this file and `payments/` — never `cart/`.
 
-### 5. Enforce the Boundary with ESLint (`eslint-plugin-boundaries`)
+### 4. Delivery Layer — Thin Entry Points
 
-Writing "core must not import adapters" in a skill is guidance the AI can still miss under pressure. This turns it into a build error.
+```typescript
+// app/checkout/actions.ts — colocated with the route, calls the module through composition/
+'use server'
+import { z } from 'zod'
+import { cart } from '@/composition'
+import type { ActionResult } from '@/lib/action-result'
+
+const checkoutSchema = z.object({ cartId: z.string().uuid() })
+
+export async function checkoutAction(input: unknown): Promise<ActionResult<{ transactionId: string }>> {
+  const parsed = checkoutSchema.safeParse(input)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'Invalid input', fields: parsed.error.flatten().fieldErrors },
+    }
+  }
+  const { transactionId } = await cart.checkout(parsed.data.cartId)
+  return { success: true, data: { transactionId } }
+}
+```
+
+Server Actions are entry points, not business logic: validate, authenticate, call the module, return an `ActionResult` (`error-handling`). See `nextjs-core` + `security` for the full action pattern.
+
+### 5. Testing — Fakes, No Mocking Library
+
+```typescript
+// modules/cart/application/checkout.test.ts
+class FakeCharge implements ChargePort {
+  async charge() { return { transactionId: 'fake-1', approved: true } }
+}
+
+it('should approve checkout when the charge is approved', async () => {
+  const repo = { findById: async () => ({ id: 'c1', totalCents: 500 }) }
+  const result = await checkout({ repo, charge: new FakeCharge() }, 'c1')
+  expect(result.approved).toBe(true)
+})
+```
+
+### 6. Enforce the Boundaries with ESLint
+
+Tested with `eslint` 10.11 + `eslint-plugin-boundaries` 7.2 + `eslint-import-resolver-typescript` (needed for `@/` aliases). A written rule is guidance the agent can still miss under pressure — this makes it a build error.
 
 ```bash
-npm install --save-dev eslint-plugin-boundaries
+npm install --save-dev eslint-plugin-boundaries eslint-import-resolver-typescript
 ```
 
 ```javascript
 // eslint.config.mjs
 import boundaries from 'eslint-plugin-boundaries'
 
+const MODULE_LAYERS = ['module', 'domain', 'application', 'adapters']
+
 export default [
   {
     plugins: { boundaries },
     settings: {
+      'import/resolver': { typescript: { project: './tsconfig.json' } },
+      // ORDER MATTERS: the first matching element wins — most specific first, catch-all last.
       'boundaries/elements': [
-        { type: 'core', pattern: 'lib/core/**' },
-        { type: 'adapters', pattern: 'lib/adapters/**' },
-        { type: 'composition', pattern: 'lib/composition.ts' },
+        { type: 'domain', pattern: 'modules/*/domain', capture: ['module'], partialMatch: false },
+        { type: 'application', pattern: 'modules/*/application', capture: ['module'], partialMatch: false },
+        { type: 'adapters', pattern: 'modules/*/adapters', capture: ['module'], partialMatch: false },
+        { type: 'module', pattern: 'modules/*', capture: ['module'], partialMatch: false }, // index.ts
+        { type: 'composition', pattern: 'composition', partialMatch: false },
+        { type: 'app', pattern: 'app', partialMatch: false },
+        { type: 'shared', pattern: '*', partialMatch: false }, // components/, lib/, hooks/ ...
       ],
     },
     rules: {
@@ -265,9 +271,19 @@ export default [
         default: 'allow',
         policies: [
           {
-            from: { element: { type: 'core' } },
+            from: { element: { types: { anyOf: MODULE_LAYERS } } },
+            disallow: { to: { element: { types: { anyOf: MODULE_LAYERS }, captured: { module: '!{{ from.element.captured.module }}' } } } },
+            message: 'A module must not import another module. Depend on a port you own; composition/ wires it.',
+          },
+          {
+            from: { element: { types: { anyOf: ['domain', 'application', 'module'] } } },
             disallow: { to: { element: { type: 'adapters' } } },
-            message: 'core/ must depend on ports (interfaces), never on a concrete adapter.',
+            message: 'domain/, application/ and index.ts must not import adapters/ — depend on a port.',
+          },
+          {
+            from: { element: { types: { noneOf: [...MODULE_LAYERS, 'composition'] } } },
+            disallow: { to: { element: { types: { anyOf: ['domain', 'application', 'adapters'] } } } },
+            message: 'Import a module only through modules/<name>/index.ts.',
           },
         ],
       }],
@@ -276,49 +292,23 @@ export default [
 ]
 ```
 
-Run this in CI. A PR that has the core importing `stripe` directly fails the build — the isolation guarantee doesn't depend on anyone remembering the rule.
+Run it in CI. Verified against a fixture: cross-module imports, `domain`→`adapters`, and `app/`/`components/` reaching into internals (relative and `@/` imports) all fail the build; composition, `app` → `@/composition` and public `index.ts` imports pass.
 
----
-
-## 📁 File Structure
-
-```
-lib/
-├── core/                              # Domain + application services — zero imports from adapters/
-│   ├── ports/
-│   │   ├── payment-gateway.port.ts
-│   │   └── notifier.port.ts
-│   └── services/
-│       └── checkout.service.ts        # depends only on ports, receives them as arguments
-│
-├── adapters/                          # Concrete implementations — the only files that know SDKs
-│   ├── stripe-payment.adapter.ts
-│   ├── mercadopago-payment.adapter.ts
-│   └── resend-notifier.adapter.ts     # see `email` skill for the Resend specifics
-│
-├── composition.ts                     # Single wiring point — imports both core/ and adapters/
-│
-├── actions/                           # Server Actions import from composition.ts, never adapters/ directly
-│   └── checkout.ts
-└── services/                          # Existing plain service layer (database/prisma) — unaffected
-```
-
-**Relationship to existing skills:**
-- `database`/`prisma` repositories are natural adapters behind a `Repository` port when a data source might change; leave them as-is (plain service layer) when it won't.
-- `api-design`'s Mercado Pago webhook section and `email`'s Resend service layer are the two adapters most likely to sit behind `PaymentGatewayPort`/`NotifierPort` in practice — read those skills for the SDK-specific details, this skill only owns the boundary.
+**Not covered:** a `domain/`/`application/` file importing an SDK package directly (`stripe`) is not caught — add a policy with `to: { module: { origin: 'external', source: 'stripe' } }` (syntax from the plugin README, untested here).
 
 ---
 
 ## 📋 Checklist Before Commit
 
-- [ ] `core/` has zero imports from `adapters/` — only from `core/ports/`
-- [ ] Port interfaces use domain language, no leaked SDK types (`Stripe.*`, `mercadopago.*`, etc.)
-- [ ] Every adapter implements its port fully — no partial implementations with `as any`
-- [ ] Exactly one composition root wires adapters to ports — no duplicated `new XAdapter(...)` elsewhere
-- [ ] `eslint-plugin-boundaries` (or equivalent) configured and passing in CI
-- [ ] Core services tested against a fake/in-memory adapter, no real SDK calls in unit tests
-- [ ] No DI container introduced unless the app has outgrown manual composition (many adapters, per-request scoping needs)
+- [ ] Every module has one `index.ts` exporting a factory + public types; nothing else is imported from outside
+- [ ] No module imports another module — cross-module needs go through a port the consumer owns, wired in `composition/`
+- [ ] `domain/`/`application/` import no adapter and no SDK; ports use the module's language, no leaked SDK types
+- [ ] Exactly one `composition/` wires adapters and modules — no `new XAdapter(...)` elsewhere
+- [ ] Only a module's own `adapters/` touch its tables
+- [ ] Use cases tested against fakes, no real SDK calls
+- [ ] `eslint-plugin-boundaries` configured and passing in CI
+- [ ] Plain CRUD with no rules of its own was NOT turned into a module
 
 ---
 
-*Skill Version: 1.0.0 | Compatible with Next.js 16.x, eslint-plugin-boundaries 7.x*
+*Skill Version: 2.0.0 | Compatible with Next.js 16.x, eslint 10.x, eslint-plugin-boundaries 7.x*

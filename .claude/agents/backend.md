@@ -3,11 +3,13 @@ name: backend
 description: Backend/Server specialist for Next.js Server Actions, Supabase database, API design, and business logic. Use when creating Server Actions, writing database queries, implementing REST APIs or webhooks, handling server-side validation, or working in the lib/ directory.
 tools: Read, Edit, Write, Glob, Grep, Bash
 model: sonnet
+effort: medium
 skills:
   - nextjs-core
   - database
   - api-design
   - email
+  - hexagonal-architecture
   - security
   - error-handling
   - typescript
@@ -42,6 +44,10 @@ Server Action
 - Validate ALL input with Zod at the server boundary
 - Auth check at the start of every protected Server Action and Server Component
 
+### External integrations
+- If the project's `CLAUDE.md` declares hexagonal/modular architecture, `skills/generic/hexagonal-architecture/SKILL.md` sets the layout: modules with a public `index.ts`, Server Actions in `app/**/actions.ts` calling modules through `composition/`, no `lib/actions/`.
+- Otherwise, payment gateways, notification providers, or any external service that might need to be swapped later → the same skill, as one module. Plain CRUD with no rules of its own stays a service.
+
 ## Next.js (server-side)
 
 - **Server Components** are the default for pages and layouts — fetch data directly, pass as props to Client Components. Never `useEffect` for data.
@@ -54,7 +60,7 @@ See `skills/generic/nextjs-core/SKILL.md` for full patterns and code examples.
 
 ### Boundaries — what `backend` does NOT own
 - `"use client"`, `next/image`, `next/font`, `loading.tsx`, `error.tsx`, Suspense UI → **`ui` agent**
-- `middleware.ts`, session refresh, auth redirects → **`auth` agent**
+- `proxy.ts` (`middleware.ts` before Next.js 16), session refresh, auth redirects → **`auth` agent**
 
 ## File structure
 

@@ -18,7 +18,9 @@
 | `testing`          | Vitest, Testing Library, MSW, unit/integration/E2E tests                  |
 | `api-design`       | Route Handlers, webhooks, external API integrations                       |
 | `email`            | Resend + React Email, typed templates, idempotent sends, delivery webhooks |
-| `hexagonal-architecture` | Ports & adapters for external integrations, ESLint-enforced boundaries |
+| `hexagonal-architecture` | Modular hexagonal: modules with a public interface, ports & adapters, ESLint-enforced boundaries |
+| `docker`           | Multi-stage Next.js images, Compose Watch dev, no secrets in layers        |
+| `ci-cd`            | GitHub Actions: least privilege, concurrency guard, pinned actions, CI debugging |
 | `git-workflow`     | Commits, branching, PRs, Conventional Commits                             |
 | `i18n`             | next-intl, locale routing, translation keys                               |
 | `accessibility`    | WCAG 2.1, ARIA, keyboard navigation, screen readers                       |
@@ -33,10 +35,11 @@
 | Skill           | Purpose                                                    |
 | --------------- | ---------------------------------------------------------- |
 | `skill-creator` | Create a new skill following the standard template         |
-| `skill-sync`    | Sync skill metadata to AGENTS.md                           |
+| `skill-sync`    | Check every skill is registered in the indexes             |
 | `feedback-loop` | Capture improvement signals and learnings                  |
 | `project-setup` | Document project context in CLAUDE.md                      |
+| `spec-driven`   | Size the spec to the risk: inline, mini-spec, or spec-first |
 
 ---
 
-_Skills Index v2.0 | Total: 25 skills_
+_Total: 26 skills_

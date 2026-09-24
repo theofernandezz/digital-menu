@@ -1,14 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerSupabaseClient } from "@/adapters/driven/supabase/client";
-import {
-  createMenuItemUseCase,
-  updateMenuItemUseCase,
-  deleteMenuItemUseCase,
-  getMyRestaurantUseCase,
-  syncMenuItemTagsUseCase,
-} from "@/composition/container";
+import { getUseCases } from "@/composition/request-scope";
 import { toFormErrors, type FieldErrors } from "@/app/admin/action-helpers";
 
 export type MenuItemFormState = {
@@ -30,11 +23,11 @@ export async function createMenuItemAction(
   _prevState: MenuItemFormState,
   formData: FormData,
 ): Promise<MenuItemFormState> {
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
 
   try {
-    const restaurant = await getMyRestaurantUseCase(client).execute();
-    const item = await createMenuItemUseCase(client).execute({
+    const restaurant = await catalog.getMyRestaurant.execute();
+    const item = await catalog.createMenuItem.execute({
       restaurantId: restaurant.id,
       categoryId: formData.get("categoryId"),
       name: formData.get("name"),
@@ -42,7 +35,7 @@ export async function createMenuItemAction(
       price: formData.get("price"),
       imageUrl: formData.get("imageUrl") || null,
     });
-    await syncMenuItemTagsUseCase(client).execute({
+    await catalog.syncMenuItemTags.execute({
       restaurantId: restaurant.id,
       menuItemId: item.id,
       tagNames: parseTagNames(formData.get("tags")),
@@ -59,11 +52,11 @@ export async function updateMenuItemAction(
   _prevState: MenuItemFormState,
   formData: FormData,
 ): Promise<MenuItemFormState> {
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
   const restaurantId = formData.get("restaurantId");
 
   try {
-    const item = await updateMenuItemUseCase(client).execute({
+    const item = await catalog.updateMenuItem.execute({
       id: formData.get("id"),
       restaurantId,
       categoryId: formData.get("categoryId"),
@@ -75,7 +68,7 @@ export async function updateMenuItemAction(
       // value, is what means "available" here.
       isAvailable: formData.get("isAvailable") !== null,
     });
-    await syncMenuItemTagsUseCase(client).execute({
+    await catalog.syncMenuItemTags.execute({
       restaurantId,
       menuItemId: item.id,
       tagNames: parseTagNames(formData.get("tags")),
@@ -93,9 +86,9 @@ export async function updateMenuItemAction(
 // result. updateMenuItemUseCase replaces the whole entity, so every field
 // travels as a hidden input even though only isAvailable changes.
 export async function toggleMenuItemAvailabilityAction(formData: FormData): Promise<void> {
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
 
-  await updateMenuItemUseCase(client).execute({
+  await catalog.updateMenuItem.execute({
     id: formData.get("id"),
     restaurantId: formData.get("restaurantId"),
     categoryId: formData.get("categoryId"),
@@ -113,10 +106,10 @@ export async function deleteMenuItemAction(
   _prevState: MenuItemFormState,
   formData: FormData,
 ): Promise<MenuItemFormState> {
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
 
   try {
-    await deleteMenuItemUseCase(client).execute({
+    await catalog.deleteMenuItem.execute({
       id: formData.get("id"),
       restaurantId: formData.get("restaurantId"),
     });

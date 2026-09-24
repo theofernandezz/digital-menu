@@ -153,6 +153,8 @@ git add package.json pnpm-lock.yaml
 git commit -m "build(deps): upgrade react to 19.1"
 ```
 
+**Hooks that auto-stage break atomic commits.** A pre-commit hook that regenerates files and runs `git add` on them (this library's `.githooks/pre-commit` → `agents/`, `.opencode/`) builds them from the whole working tree, not from what you staged — unrelated uncommitted changes leak into the commit. Isolate first: `git stash push`, `git checkout stash@{0} -- <files>`, commit, then `git stash pop`.
+
 ### Interactive Staging
 
 ```bash

@@ -181,3 +181,36 @@ user, which then couldn't write `.env.local` a step later):
 `node_modules` is unaffected either way — it's its own anonymous volume
 (seeded from the image at build time as root), not part of the bind mount.
 Nothing to fix locally; this is a CI-environment-only step.
+
+## 14. Local Supabase next to the app container
+
+Supabase runs on the host via the CLI (`supabase start`), not inside
+`docker-compose.yml`. `.env.local` keeps `http://127.0.0.1:54321` so the
+host-side Playwright run reaches it; inside the container that address is the
+container itself, so `docker-compose.yml` overrides just `NEXT_PUBLIC_SUPABASE_URL`
+to `http://host.docker.internal:54321` (`environment` wins over `env_file`).
+`extra_hosts: host-gateway` makes that name resolve on a Linux runner too —
+Docker Desktop on macOS provides it natively, which is why it worked locally
+without it. All Supabase access is server-side, so the browser never needs the
+host-facing URL.
+
+**Gotcha:** the repo is bind-mounted over `/app`, so a `next dev` on the host
+and the container's `pnpm dev` share one `.next/` directory, and the second
+one can't take Next's dev lock. Don't run both. To run tests without starting
+Next inside the container, skip the long-running service:
+
+```bash
+docker compose run --rm --no-deps app pnpm test:integration
+```
+
+`docker compose up` also fails outright on `bind: address already in use` if a
+host dev server already holds port 3000.
+
+Integration tests that need SQL the REST API can't do (a temporary trigger, a
+second transaction holding a lock, catalog checks) connect straight to the local
+database with the `pg` devDependency, through `TEST_DATABASE_URL`: `127.0.0.1:54322`
+in `.env.local` for the host, overridden to `host.docker.internal:54322` for the
+container in `docker-compose.yml`, and written from `supabase status -o env` in CI.
+The tests refuse any other host. Because `node_modules` is a volume seeded from the
+image (item 12), rebuild after pulling a change to `package.json`:
+`docker compose build app` (then `down -v` if a stale volume survives).

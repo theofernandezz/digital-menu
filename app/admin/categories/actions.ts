@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerSupabaseClient } from "@/adapters/driven/supabase/client";
-import { createCategoryUseCase, updateCategoryUseCase, deleteCategoryUseCase, getMyRestaurantUseCase } from "@/composition/container";
+import { getUseCases } from "@/composition/request-scope";
 import { toFormErrors, type FieldErrors } from "@/app/admin/action-helpers";
 
 export type CategoryFormState = {
@@ -14,11 +13,11 @@ export async function createCategoryAction(
   _prevState: CategoryFormState,
   formData: FormData,
 ): Promise<CategoryFormState> {
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
 
   try {
-    const restaurant = await getMyRestaurantUseCase(client).execute();
-    await createCategoryUseCase(client).execute({
+    const restaurant = await catalog.getMyRestaurant.execute();
+    await catalog.createCategory.execute({
       restaurantId: restaurant.id,
       name: formData.get("name"),
       description: formData.get("description") || null,
@@ -35,10 +34,10 @@ export async function updateCategoryAction(
   _prevState: CategoryFormState,
   formData: FormData,
 ): Promise<CategoryFormState> {
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
 
   try {
-    await updateCategoryUseCase(client).execute({
+    await catalog.updateCategory.execute({
       id: formData.get("id"),
       restaurantId: formData.get("restaurantId"),
       name: formData.get("name"),
@@ -56,10 +55,10 @@ export async function deleteCategoryAction(
   _prevState: CategoryFormState,
   formData: FormData,
 ): Promise<CategoryFormState> {
-  const client = await createServerSupabaseClient();
+  const { catalog } = await getUseCases();
 
   try {
-    await deleteCategoryUseCase(client).execute({
+    await catalog.deleteCategory.execute({
       id: formData.get("id"),
       restaurantId: formData.get("restaurantId"),
     });

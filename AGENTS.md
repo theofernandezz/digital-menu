@@ -9,7 +9,7 @@
 
 > **Skills Reference**: For detailed patterns, use these skills:
 >
-> - [`skill-sync`](skills/skill-sync/SKILL.md) - Keep AGENTS.md in sync with skill metadata
+> - [`skill-sync`](skills/skill-sync/SKILL.md) - Check every skill is registered in the indexes
 > - [`skill-creator`](skills/skill-creator/SKILL.md) - Create new AI agent skills
 > - **Skills Index**: [`skills/_index.md`](skills/_index.md) - Quick reference for all skills
 
@@ -25,13 +25,13 @@ When a task falls into a specific domain, **route to the specialized agent** whi
 | **Backend/Server** | [`/backend/AGENTS.md`](backend/AGENTS.md) | [`agents/backend.md`](agents/backend.md) | nextjs-core, database, security, error-handling, typescript |
 | **Auth**           | [`/auth/AGENTS.md`](auth/AGENTS.md)       | [`agents/auth.md`](agents/auth.md)       | database, security, error-handling, nextjs-core             |
 | **Testing**        | [`/testing/AGENTS.md`](testing/AGENTS.md) | [`agents/testing.md`](agents/testing.md) | testing, typescript, react-patterns                         |
-| **Data/Prisma**    | —                                          | [`agents/data.md`](agents/data.md)       | prisma, database, typescript, error-handling                |
-| **Full-stack Feature** | —                                      | [`agents/feature.md`](agents/feature.md) | nextjs-core, typescript, react-patterns, database, security, testing |
+| **Data/Prisma**    | —                                          | [`agents/data.md`](agents/data.md)       | prisma, database, hexagonal-architecture, typescript, error-handling |
 | **Git**            | —                                          | [`agents/git.md`](agents/git.md)         | git-workflow                                                 |
 | **Mobile**         | —                                          | [`agents/mobile.md`](agents/mobile.md)   | react-native, typescript, state-management, performance, testing |
 
-> **Note:** Files in `/agents/` are optimized versions for Claude Code CLI. Gemini users can use them identically.
-> **Data/Prisma, Full-stack Feature, Git, and Mobile don't have a `/<domain>/AGENTS.md`** — that per-scope doc layer only exists for ui/backend/auth/testing today. Use `agents/*.md` directly for these four.
+> **Note:** Files in `/agents/` are **generated** from `.claude/agents/*.md` (the source of truth) — don't edit them by hand. Claude Code invokes `.claude/agents/*.md` directly as real subagents; Gemini and other tools without subagent support read the generated `/agents/*.md` docs instead.
+> **Data/Prisma, Git, and Mobile don't have a `/<domain>/AGENTS.md`** — that per-scope doc layer only exists for ui/backend/auth/testing today. Use `agents/*.md` directly for these three.
+> There is no `feature` agent — a full-stack feature is sequential delegation across `data`/`backend` → `ui` → `testing`, coordinated by the orchestrator (see `CLAUDE.md`'s "Full-stack features" section).
 
 ### Agent Hierarchy
 
@@ -54,7 +54,7 @@ AGENTS.md (Orchestrator Agent - OA)
 - For Authentication tasks → delegate to auth agent
 - For Testing tasks → delegate to testing agent
 - For Prisma/data modeling tasks → delegate to data agent
-- For full-stack features spanning multiple domains → delegate to feature agent
+- For full-stack features spanning multiple domains → sequential delegation, data/backend → ui → testing (no single feature agent)
 - For commits/branches/PRs → delegate to git agent
 - For React Native/Expo tasks → delegate to mobile agent
 
@@ -116,7 +116,7 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Multi-language support                  | `i18n`             |
 | Optimizing Core Web Vitals              | `performance`      |
 | React composition patterns              | `react-patterns`   |
-| Regenerate AGENTS.md Auto-invoke tables | `skill-sync`       |
+| Verify skill registration               | `skill-sync`       |
 | Security headers                        | `security`         |
 | State management patterns               | `react-patterns`   |
 | Managing global state                   | `state-management` |
@@ -134,8 +134,21 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Sending transactional emails            | `email`            |
 | Building email templates                | `email`            |
 | Working with Resend                     | `email`            |
+| Working with environment variables      | `env-config`       |
+| Creating .env files                     | `env-config`       |
+| Accessing process.env                   | `env-config`       |
+| Configuring secrets                     | `env-config`       |
 | Applying hexagonal/ports-adapters architecture | `hexagonal-architecture` |
 | Integrating a payment gateway           | `hexagonal-architecture` |
+| Creating a new module or bounded context | `hexagonal-architecture` |
+| Writing a Dockerfile                    | `docker`           |
+| Creating docker-compose.yml             | `docker`           |
+| Containerizing a Next.js app            | `docker`           |
+| Setting up local development with Docker | `docker`          |
+| Creating GitHub Actions workflows       | `ci-cd`            |
+| Editing .github/workflows               | `ci-cd`            |
+| Setting up CI                           | `ci-cd`            |
+| Debugging a failing CI run              | `ci-cd`            |
 | Working with Supabase                   | `database`         |
 | Working with Tailwind classes           | `ui-engineering`   |
 | Working with app/ directory             | `nextjs-core`      |
@@ -170,7 +183,10 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | `git-workflow`     | Conventional Commits, branching, PRs                    | [SKILL.md](skills/generic/git-workflow/SKILL.md)     |
 | `api-design`       | REST APIs, webhooks, external integrations              | [SKILL.md](skills/generic/api-design/SKILL.md)       |
 | `email`            | Resend + React Email, typed templates, idempotent sends | [SKILL.md](skills/generic/email/SKILL.md)            |
+| `env-config`       | Zod-validated env vars, server/public split             | [SKILL.md](skills/generic/env-config/SKILL.md)       |
 | `hexagonal-architecture` | Ports & adapters, ESLint-enforced boundaries       | [SKILL.md](skills/generic/hexagonal-architecture/SKILL.md) |
+| `docker`           | Multi-stage Next.js images, Compose Watch, no baked secrets | [SKILL.md](skills/generic/docker/SKILL.md)           |
+| `ci-cd`            | GitHub Actions workflows, concurrency, least privilege  | [SKILL.md](skills/generic/ci-cd/SKILL.md)            |
 | `i18n`             | Multi-language support with next-intl                   | [SKILL.md](skills/generic/i18n/SKILL.md)             |
 | `accessibility`    | WCAG 2.1, ARIA, keyboard navigation                     | [SKILL.md](skills/generic/accessibility/SKILL.md)    |
 | `performance`      | Core Web Vitals, lazy loading, optimization             | [SKILL.md](skills/generic/performance/SKILL.md)      |
@@ -184,9 +200,10 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Skill           | Description                         | URL                                       |
 | --------------- | ----------------------------------- | ----------------------------------------- |
 | `skill-creator` | Create new AI agent skills          | [SKILL.md](skills/skill-creator/SKILL.md) |
-| `skill-sync`    | Sync skill metadata to AGENTS.md    | [SKILL.md](skills/skill-sync/SKILL.md)    |
+| `skill-sync`    | Check skill registration            | [SKILL.md](skills/skill-sync/SKILL.md)    |
 | `feedback-loop` | Self-improvement, capture learnings | [SKILL.md](skills/feedback-loop/SKILL.md) |
 | `project-setup` | Interview + document project context in CLAUDE.md | [SKILL.md](skills/project-setup/SKILL.md) |
+| `spec-driven` | Size the spec to the risk: inline, incremental mini-spec, or spec-first | [SKILL.md](skills/spec-driven/SKILL.md) |
 
 ---
 
@@ -293,14 +310,8 @@ Skills can be combined. When multiple skills are active:
 ## 🛠️ Setup & Commands
 
 ```bash
-# Sync skills metadata to all AGENTS.md files
+# Check every skill is registered in the indexes (exit 1 if not)
 ./skills/skill-sync/assets/sync.sh
-
-# Dry run (show what would change)
-./skills/skill-sync/assets/sync.sh --dry-run
-
-# Verify skill freshness and release drift
-node skills/governance/check-skills-freshness.mjs --strict
 
 # Validate project against all skills
 pnpm lint && pnpm typecheck
@@ -308,7 +319,3 @@ pnpm lint && pnpm typecheck
 # Run tests
 pnpm test
 ```
-
----
-
-_Last Updated: 2026-02-25 | Version: 2.3.0_

@@ -123,7 +123,13 @@ const serverEnvSchema = z.object({
 const isServer = typeof window === 'undefined'
 
 export const env = {
-  ...publicEnvSchema.parse(process.env),
+  // Literal references only: Next.js inlines `process.env.NEXT_PUBLIC_X` at build time, but a
+  // dynamic `parse(process.env)` gets no NEXT_PUBLIC_* values in the browser bundle.
+  ...publicEnvSchema.parse({
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  }),
   ...(isServer ? serverEnvSchema.parse(process.env) : {}),
 }
 ```

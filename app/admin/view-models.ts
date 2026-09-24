@@ -1,4 +1,5 @@
 import type { Category } from "@/domain/entities/category";
+import type { DiningTable } from "@/domain/entities/dining-table";
 import type { MenuItem } from "@/domain/entities/menu-item";
 import type { Restaurant } from "@/domain/entities/restaurant";
 
@@ -44,6 +45,23 @@ export function toCategoryViewModel(category: Category): CategoryViewModel {
     name: category.name,
     description: category.description,
     displayOrder: category.displayOrder,
+  };
+}
+
+// The QR token never crosses to the client: `link` is built on the server.
+export type DiningTableViewModel = {
+  id: string;
+  tableNumber: number;
+  isOpen: boolean;
+  link: string;
+};
+
+export function toDiningTableViewModel(table: DiningTable, link: string): DiningTableViewModel {
+  return {
+    id: table.id,
+    tableNumber: table.tableNumber,
+    isOpen: table.isOpen,
+    link,
   };
 }
 

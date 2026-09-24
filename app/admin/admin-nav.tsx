@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/admin", label: "Panel" },
   { href: "/admin/categories", label: "Categorías" },
   { href: "/admin/items", label: "Platos" },
+  { href: "/admin/tables", label: "Mesas" },
   { href: "/admin/settings", label: "Ajustes" },
 ] as const;
 
