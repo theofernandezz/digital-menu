@@ -9,7 +9,7 @@
 
 > **Skills Reference**: For detailed patterns, use these skills:
 >
-> - [`skill-sync`](skills/skill-sync/SKILL.md) - Keep AGENTS.md in sync with skill metadata
+> - [`skill-sync`](skills/skill-sync/SKILL.md) - Check every skill is registered in the indexes
 > - [`skill-creator`](skills/skill-creator/SKILL.md) - Create new AI agent skills
 > - **Skills Index**: [`skills/_index.md`](skills/_index.md) - Quick reference for all skills
 
@@ -116,7 +116,7 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Multi-language support                  | `i18n`             |
 | Optimizing Core Web Vitals              | `performance`      |
 | React composition patterns              | `react-patterns`   |
-| Regenerate AGENTS.md Auto-invoke tables | `skill-sync`       |
+| Verify skill registration               | `skill-sync`       |
 | Security headers                        | `security`         |
 | State management patterns               | `react-patterns`   |
 | Managing global state                   | `state-management` |
@@ -134,8 +134,21 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Sending transactional emails            | `email`            |
 | Building email templates                | `email`            |
 | Working with Resend                     | `email`            |
+| Working with environment variables      | `env-config`       |
+| Creating .env files                     | `env-config`       |
+| Accessing process.env                   | `env-config`       |
+| Configuring secrets                     | `env-config`       |
 | Applying hexagonal/ports-adapters architecture | `hexagonal-architecture` |
 | Integrating a payment gateway           | `hexagonal-architecture` |
+| Creating a new module or bounded context | `hexagonal-architecture` |
+| Writing a Dockerfile                    | `docker`           |
+| Creating docker-compose.yml             | `docker`           |
+| Containerizing a Next.js app            | `docker`           |
+| Setting up local development with Docker | `docker`          |
+| Creating GitHub Actions workflows       | `ci-cd`            |
+| Editing .github/workflows               | `ci-cd`            |
+| Setting up CI                           | `ci-cd`            |
+| Debugging a failing CI run              | `ci-cd`            |
 | Working with Supabase                   | `database`         |
 | Working with Tailwind classes           | `ui-engineering`   |
 | Working with app/ directory             | `nextjs-core`      |
@@ -170,7 +183,10 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | `git-workflow`     | Conventional Commits, branching, PRs                    | [SKILL.md](skills/generic/git-workflow/SKILL.md)     |
 | `api-design`       | REST APIs, webhooks, external integrations              | [SKILL.md](skills/generic/api-design/SKILL.md)       |
 | `email`            | Resend + React Email, typed templates, idempotent sends | [SKILL.md](skills/generic/email/SKILL.md)            |
+| `env-config`       | Zod-validated env vars, server/public split             | [SKILL.md](skills/generic/env-config/SKILL.md)       |
 | `hexagonal-architecture` | Ports & adapters, ESLint-enforced boundaries       | [SKILL.md](skills/generic/hexagonal-architecture/SKILL.md) |
+| `docker`           | Multi-stage Next.js images, Compose Watch, no baked secrets | [SKILL.md](skills/generic/docker/SKILL.md)           |
+| `ci-cd`            | GitHub Actions workflows, concurrency, least privilege  | [SKILL.md](skills/generic/ci-cd/SKILL.md)            |
 | `i18n`             | Multi-language support with next-intl                   | [SKILL.md](skills/generic/i18n/SKILL.md)             |
 | `accessibility`    | WCAG 2.1, ARIA, keyboard navigation                     | [SKILL.md](skills/generic/accessibility/SKILL.md)    |
 | `performance`      | Core Web Vitals, lazy loading, optimization             | [SKILL.md](skills/generic/performance/SKILL.md)      |
@@ -184,10 +200,10 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Skill           | Description                         | URL                                       |
 | --------------- | ----------------------------------- | ----------------------------------------- |
 | `skill-creator` | Create new AI agent skills          | [SKILL.md](skills/skill-creator/SKILL.md) |
-| `skill-sync`    | Sync skill metadata to AGENTS.md    | [SKILL.md](skills/skill-sync/SKILL.md)    |
+| `skill-sync`    | Check skill registration            | [SKILL.md](skills/skill-sync/SKILL.md)    |
 | `feedback-loop` | Self-improvement, capture learnings | [SKILL.md](skills/feedback-loop/SKILL.md) |
 | `project-setup` | Interview + document project context in CLAUDE.md | [SKILL.md](skills/project-setup/SKILL.md) |
-| `spec-driven` | Write a spec before delegating to subagents; template + lifecycle | [SKILL.md](skills/spec-driven/SKILL.md) |
+| `spec-driven` | Size the spec to the risk: inline, incremental mini-spec, or spec-first | [SKILL.md](skills/spec-driven/SKILL.md) |
 
 ---
 
@@ -294,14 +310,8 @@ Skills can be combined. When multiple skills are active:
 ## 🛠️ Setup & Commands
 
 ```bash
-# Sync skills metadata to all AGENTS.md files
+# Check every skill is registered in the indexes (exit 1 if not)
 ./skills/skill-sync/assets/sync.sh
-
-# Dry run (show what would change)
-./skills/skill-sync/assets/sync.sh --dry-run
-
-# Verify skill freshness and release drift
-node skills/governance/check-skills-freshness.mjs --strict
 
 # Validate project against all skills
 pnpm lint && pnpm typecheck

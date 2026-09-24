@@ -10,6 +10,8 @@ Root `middleware.ts` is the one place Next.js forces a file outside this tree to
 
 **Env vars:** every file in `adapters/driven/supabase/` reads config through `lib/env.ts` (Zod-validated, per the `env-config` skill), never raw `process.env`. This overrides `skills/generic/database/SKILL.md`'s own example, which uses `process.env.NEXT_PUBLIC_SUPABASE_URL!` — that pattern is forbidden here; treat `env-config` as authoritative wherever the two skills disagree on this project.
 
+**Layout vs the `hexagonal-architecture` skill:** the skill (v2.0) prescribes a module-first layout — `modules/<name>/{domain,application,adapters}` with a public `index.ts` — and ships its own ESLint config. This project uses root-level `domain/`, `application/`, `adapters/` and `composition/` instead, and this document is authoritative for folder paths and boundary lint rules (same precedence as for the `database` and `env-config` skills above). Use the skill for the principles both share — ports are defined in `application/`, adapters implement them, `composition/` wires them, and the boundaries are enforced by ESLint — not for its paths or its config.
+
 ## Why ports are outbound-only here
 
 A use case's own method signature already functions as its inbound port — nothing else calls into it, so a dedicated interface with exactly one implementation adds a file without adding a real seam. Outbound ports (repositories, auth, storage) get real interfaces because they have two implementations in practice: the Supabase adapter for real usage, and an in-memory fake for use-case unit tests. That's the actual return on this layering — keep it, don't dilute it by adding symmetrical inbound interfaces nothing ever swaps.

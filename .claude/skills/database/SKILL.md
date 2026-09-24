@@ -147,7 +147,10 @@ export async function createProject(formData: FormData) {
   })
 
   if (!validated.success) {
-    return { error: validated.error.flatten() }
+    return {
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'Please check your input', fields: validated.error.flatten().fieldErrors },
+    }
   }
 
   // Now safe to insert
@@ -166,11 +169,12 @@ export async function createProject(formData: FormData) {
 ```typescript
 // ❌ FORBIDDEN - Client-side mutations with service role
 import { createBrowserClient } from '@supabase/ssr'
+import { env } from '@/lib/env'
 
 // Client component directly mutating data
 const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // NEVER EXPOSE THIS
+  env.NEXT_PUBLIC_SUPABASE_URL,
+  env.SUPABASE_SERVICE_ROLE_KEY // NEVER EXPOSE THIS
 )
 
 // ✅ CORRECT - Use Server Actions for mutations
@@ -224,14 +228,15 @@ export type UpdateProject = z.infer<typeof updateProjectSchema>
 // lib/supabase/server.ts
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { env } from '@/lib/env'
 import type { Database } from '@/types/database'
 
 export async function createClient() {
   const cookieStore = await cookies()
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -255,13 +260,64 @@ export async function createClient() {
 ```typescript
 // lib/supabase/client.ts
 import { createBrowserClient } from '@supabase/ssr'
+import { env } from '@/lib/env'
 import type { Database } from '@/types/database'
 
 export function createClient() {
   return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   )
+}
+```
+
+Session refresh helper — the `updateSession()` that `proxy.ts` (see `nextjs-core`) calls on every request:
+
+```typescript
+// lib/supabase/middleware.ts
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import { env } from '@/lib/env'
+import type { Database } from '@/types/database'
+
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request })
+
+  // New client per request — never a module-level singleton
+  const supabase = createServerClient<Database>(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          // Pass the refreshed token to Server Components (request) and to the browser (response)
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // No code between createServerClient and getUser() — it triggers the token refresh.
+  // getUser() verifies the token with the Auth server; never trust getSession() server-side.
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const isPublic = ['/login', '/auth'].some((p) => request.nextUrl.pathname.startsWith(p))
+  if (!user && !isPublic) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  // Return supabaseResponse as-is: a different response object drops the refreshed cookies
+  // and signs the user out on the next request.
+  return supabaseResponse
 }
 ```
 
@@ -418,24 +474,19 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ProjectService, DatabaseError } from '@/lib/services/project-service'
 import { createProjectSchema } from '@/lib/validations/project'
+import type { ActionResult } from '@/lib/action-result'
 import { z } from 'zod'
 
-export type ActionState = {
-  errors?: Record<string, string[]>
-  message?: string
-  success?: boolean
-}
-
 export async function createProject(
-  prevState: ActionState,
+  _prevState: ActionResult | null,
   formData: FormData
-): Promise<ActionState> {
+): Promise<ActionResult> {
   const supabase = await createClient()
   
   // Auth check
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    return { errors: { _form: ['Not authenticated'] } }
+    return { success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }
   }
 
   // Validate
@@ -444,23 +495,33 @@ export async function createProject(
     description: formData.get('description'),
   }
 
+  let projectId: string
   try {
     const validated = createProjectSchema.parse(rawInput)
     
     const service = new ProjectService(supabase)
     const project = await service.create(validated, user.id)
-
-    revalidatePath('/projects')
-    redirect(`/projects/${project.id}`)
+    projectId = project.id
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { errors: error.flatten().fieldErrors as Record<string, string[]> }
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Please check your input',
+          fields: error.flatten().fieldErrors,
+        },
+      }
     }
     if (error instanceof DatabaseError) {
-      return { errors: { _form: [error.message] } }
+      return { success: false, error: { code: 'DATABASE_ERROR', message: error.message } }
     }
     throw error // Re-throw unexpected errors
   }
+
+  // redirect() works by throwing — keep it outside try/catch so the catch can't swallow it
+  revalidatePath('/projects')
+  redirect(`/projects/${projectId}`)
 }
 ```
 
@@ -850,12 +911,14 @@ CREATE POLICY "Author can manage"
 
 ## 📁 File Structure
 
+> **Hexagonal projects:** if the project's `CLAUDE.md` declares hexagonal/modular architecture, `hexagonal-architecture` sets the layout — queries live in a module's `adapters/` (behind a repository port) and actions in `app/**/actions.ts`, not in `lib/services/` or `lib/actions/`.
+
 ```
 lib/
 ├── supabase/
 │   ├── client.ts          # Browser client
 │   ├── server.ts          # Server client
-│   └── middleware.ts      # Auth refresh middleware
+│   └── middleware.ts      # updateSession(), called from proxy.ts
 ├── services/
 │   ├── project-service.ts
 │   ├── user-service.ts

@@ -148,9 +148,8 @@ When you next sit down to improve the library:
 1. `gh issue list --repo theofernandezz/ai-library --state open` — review everything filed since last time
 2. Merge accepted improvements into the corresponding SKILL.md
 3. Close the issue with a pointer to the commit: `gh issue close <number> --repo theofernandezz/ai-library --comment "Merged in <commit-sha>"`
-4. Update `skill-release-registry.json` → bump `lastVerified`
-5. Check `skills/improvements.md` too — entries filed via the fallback path (no `gh` at the time) still need to be turned into issues or merged directly
-6. Escalate Critical items immediately — don't wait for a full review pass
+4. Check `skills/improvements.md` too — entries filed via the fallback path (no `gh` at the time) still need to be turned into issues or merged directly
+5. Escalate Critical items immediately — don't wait for a full review pass
 
 ---
 

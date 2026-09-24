@@ -34,7 +34,7 @@ Skills are structured instructions that give AI assistants the context they need
 | Skill           | Description                                   |
 | --------------- | --------------------------------------------- |
 | `skill-creator` | Create new AI agent skills                    |
-| `skill-sync`    | Sync skill metadata to AGENTS.md              |
+| `skill-sync`    | Check every skill is registered               |
 | `project-setup` | Document project context in CLAUDE.md         |
 
 ## Setup
@@ -74,7 +74,7 @@ skills/
 │       └── references/        # Additional docs (optional)
 │           └── *.md
 ├── skill-creator/             # Meta skill for creating skills
-├── skill-sync/                # Sync metadata to AGENTS.md
+├── skill-sync/                # Check skill registration
 │   └── assets/
 │       └── sync.sh
 ├── setup.sh                   # Multi-IDE setup script
@@ -103,39 +103,15 @@ metadata:
 ---
 ```
 
-4. Run `./skill-sync/assets/sync.sh` to update AGENTS.md
+4. Run `./skill-sync/assets/sync.sh` to check the skill is registered everywhere
 5. Commit and push
 
-## Sync Commands
+## Registration Check
 
 ```bash
-# Sync all AGENTS.md files
+# Exit 1 and list what is missing if a skill isn't registered
 ./skill-sync/assets/sync.sh
-
-# Dry run (show what would change)
-./skill-sync/assets/sync.sh --dry-run
-
-# Sync specific scope only
-./skill-sync/assets/sync.sh --scope ui
 ```
-
-## Freshness Governance
-
-Use the governance module to prevent stale skill content:
-
-```bash
-# Full strict check (metadata + live source checks)
-node skills/governance/check-skills-freshness.mjs --strict
-
-# Fast local check without network
-node skills/governance/check-skills-freshness.mjs --strict --no-fetch
-```
-
-Registry and process docs:
-
-- `skills/governance/skill-release-registry.json`
-- `skills/governance/README.md`
-- `.github/workflows/skills-freshness.yml`
 
 ---
 

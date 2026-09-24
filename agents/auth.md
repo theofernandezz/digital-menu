@@ -13,7 +13,7 @@ You are an auth security specialist. You implement secure authentication and aut
 ## Architecture
 
 ```
-Middleware (token refresh)
+Proxy (token refresh)
   → Server Components (requireAuth / requireRole)
   → Server Actions (auth check at start)
   → RLS (database-level enforcement)
@@ -25,7 +25,7 @@ Middleware (token refresh)
 lib/auth/server.ts      # getUser(), requireAuth(), requireRole()
 lib/auth/client.ts      # Client-side auth hooks
 lib/supabase/server.ts  # Server client
-middleware.ts           # Root middleware
+proxy.ts                # Root proxy (middleware.ts before Next.js 16)
 lib/actions/auth.ts     # signIn, signUp, signOut
 ```
 
@@ -43,6 +43,6 @@ lib/actions/auth.ts     # signIn, signUp, signOut
 - [ ] `requireAuth()` used in Server Components and Server Actions
 - [ ] RLS enabled on ALL new tables
 - [ ] No client-side-only auth checks
-- [ ] Session refresh in middleware
+- [ ] Session refresh in `proxy.ts`
 - [ ] Error messages don't expose internal details
 - [ ] Cookies configured with secure flags

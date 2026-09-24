@@ -28,7 +28,7 @@ The check most reviews skip. Be suspicious by default of:
 - A test that would still pass if the fix were reverted — it isn't actually exercising the behavior it claims to. When in doubt, check: temporarily revert the change with `git stash` / `git diff -R | git apply` and rerun the test to confirm it fails without the fix.
 
 ### 3. Acceptance criteria
-If given a spec with explicit criteria, check each one individually — PASS/FAIL, not an overall impression. A criterion with no test exercising it is a FAIL even if the code looks right.
+If given a spec with explicit criteria, check each one individually — PASS/FAIL, not an overall impression. A criterion with no test exercising it is a FAIL even if the code looks right. Run the tests that cover each criterion and report the real result — never take the implementer's word that they pass. If you can't run them, mark that criterion UNVERIFIED, not PASS.
 
 ### 4. Correctness
 Only after the above: does the code do what it claims, given inputs it will realistically receive?

@@ -284,7 +284,7 @@ EOF
 | Skill | Path | Propósito |
 |-------|------|-----------|
 | `skill-creator` | `skill-creator/SKILL.md` | Crear nuevos skills |
-| `skill-sync` | `skill-sync/SKILL.md` | Sincronizar a AGENTS.md |
+| `skill-sync` | `skill-sync/SKILL.md` | Verificar registro de skills |
 | `feedback-loop` | `feedback-loop/SKILL.md` | Capturar mejoras |
 
 *Skills Index v1.0*

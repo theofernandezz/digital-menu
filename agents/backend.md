@@ -38,7 +38,8 @@ Server Action
 - Auth check at the start of every protected Server Action and Server Component
 
 ### External integrations
-- Payment gateways, notification providers, or any external service that might need to be swapped later → `skills/generic/hexagonal-architecture/SKILL.md`. Not for internal CRUD.
+- If the project's `CLAUDE.md` declares hexagonal/modular architecture, `skills/generic/hexagonal-architecture/SKILL.md` sets the layout: modules with a public `index.ts`, Server Actions in `app/**/actions.ts` calling modules through `composition/`, no `lib/actions/`.
+- Otherwise, payment gateways, notification providers, or any external service that might need to be swapped later → the same skill, as one module. Plain CRUD with no rules of its own stays a service.
 
 ## Next.js (server-side)
 
@@ -52,7 +53,7 @@ See `skills/generic/nextjs-core/SKILL.md` for full patterns and code examples.
 
 ### Boundaries — what `backend` does NOT own
 - `"use client"`, `next/image`, `next/font`, `loading.tsx`, `error.tsx`, Suspense UI → **`ui` agent**
-- `middleware.ts`, session refresh, auth redirects → **`auth` agent**
+- `proxy.ts` (`middleware.ts` before Next.js 16), session refresh, auth redirects → **`auth` agent**
 
 ## File structure
 

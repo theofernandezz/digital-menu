@@ -97,6 +97,8 @@ When about to write code in these areas, **load the corresponding skill at that 
 | Creating API routes/webhooks         | `api-design`               | `skills/generic/api-design/SKILL.md`       |
 | Sending transactional emails         | `email`                    | `skills/generic/email/SKILL.md`            |
 | Integrating external services (payments, etc.) | `hexagonal-architecture`   | `skills/generic/hexagonal-architecture/SKILL.md` |
+| Writing Dockerfile/docker-compose    | `docker`                   | `skills/generic/docker/SKILL.md`           |
+| Writing GitHub Actions workflows     | `ci-cd`                    | `skills/generic/ci-cd/SKILL.md`            |
 | Handling errors                      | `error-handling`           | `skills/generic/error-handling/SKILL.md`   |
 | Internationalizing content           | `i18n`                     | `skills/generic/i18n/SKILL.md`             |
 | Working on accessibility             | `accessibility`            | `skills/generic/accessibility/SKILL.md`    |
@@ -123,17 +125,17 @@ When a task belongs to a specific domain, **invoke the corresponding subagent** 
 
 Each subagent is defined in `.claude/agents/<name>.md` — that's the source of truth. `agents/<name>.md` is a **generated** doc for humans and non-subagent tools (Gemini, Cursor); never edit it by hand, it gets overwritten.
 
-### Write the spec first
+### Size the spec to the risk
 
-Before delegating anything non-trivial — and *any* task split across two or more subagents, even a small one — write a spec to `specs/<slug>.md`. See skill `spec-driven` (`skills/spec-driven/SKILL.md`) for the template and when to skip it. This is what keeps each subagent's independent guessing from diverging on the same ambiguity, and it's what `verifier` checks diffs against later — a spec that only ever existed inside a delegation prompt can't be reused for either.
+Pick the mode with skill `spec-driven` (`skills/spec-driven/SKILL.md`): **inline** (no spec) for clear, reversible, single-domain work; **incremental** (mini-spec: Outcome + 1–3 criteria) for reversible but uncertain work; **spec-first** (full `specs/<slug>.md`) for anything costly to revert — schema, auth, payments, public contracts — and for *any* task split across two or more subagents. Whatever you hand to a subagent or to `verifier` must be persisted at `specs/<slug>.md`: a spec that only lived inside a delegation prompt can't be checked against later or reused.
 
 ### How to delegate
 
 1. **Delegate = invoke the `Agent` tool with `subagent_type: <domain>`.** Don't read the agent's file first — that defeats the isolation and reloads a full domain's worth of rules into your own context for no reason.
 2. **What to pass:** the relevant slice of the spec (or the original request verbatim for something small enough to skip a spec) plus the specific paths involved. **Never** your own reasoning or conclusions about the code — the subagent starts with zero context, and handing it your analysis reintroduces the exact blind spots isolation is meant to avoid. The prompt has to be self-contained.
-3. **When NOT to delegate:** a fresh subagent re-derives all context from scratch — real cost in tokens and latency. For a small, localized change you already understand, do it inline.
+3. **Inline or delegate — count files, per action** (starting thresholds, adjust with use): inline if understanding the change needs 1–3 files, or it's one mechanical, already-understood file. Delegate if understanding needs reading 4+ files, or if it writes 2+ non-trivial files. A fresh subagent re-derives all context from scratch — real cost in tokens and latency — so below those thresholds it isn't worth it.
 4. **Parallel delegation only with disjoint file sets.** Two subagents editing the same files can silently overwrite each other's work. If domains overlap on the same files, delegate sequentially instead.
-5. **You don't write domain code.** Your job is to route, pass context, and — once a subagent reports back — review its diff against the spec (or the original request). If it drifted from what was asked, say so before accepting it.
+5. **Past the inline threshold (item 3), you route — you don't write domain code.** Pass context, and once a subagent reports back, review its diff against the spec (or the original request). If it drifted from what was asked, say so before accepting it. Inline work stays yours to write, following the loaded skills.
 
 ### Verification before "done"
 
@@ -237,10 +239,10 @@ For special library tasks:
 | Task                | Skill           | Instructions                                                 |
 | ------------------- | --------------- | ------------------------------------------------------------ |
 | Create new skill    | `skill-creator` | Read `skills/skill-creator/SKILL.md` and follow the template |
-| Sync AGENTS.md      | `skill-sync`    | Run `./skills/skill-sync/assets/sync.sh`                     |
+| Check skill registration | `skill-sync` | Run `./skills/skill-sync/assets/sync.sh` (fails if a skill isn't registered) |
 | Record improvements | `feedback-loop` | Read `skills/feedback-loop/SKILL.md`                         |
 | Fill in Project Context (interview) | `project-setup` | Read `skills/project-setup/SKILL.md` and run its Interview Protocol |
-| Write a spec before delegating | `spec-driven` | Read `skills/spec-driven/SKILL.md`, write `specs/<slug>.md` |
+| Size a spec before delegating | `spec-driven` | Read `skills/spec-driven/SKILL.md`, pick the mode, write `specs/<slug>.md` if delegating |
 
 ---
 
@@ -287,6 +289,10 @@ type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 - RLS on ALL Supabase tables
 - NEVER trust client-side checks
 - NEVER expose internal errors to the user
+
+### Tests
+
+- A test that already existed and now fails is never edited to make it pass. Stop and report: either the diagnosis or the test is wrong, and that's the user's call. Exception: the task or spec explicitly changes that test or behavior.
 
 ### Imports
 

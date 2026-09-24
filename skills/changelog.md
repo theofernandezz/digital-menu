@@ -6,10 +6,11 @@
 
 ---
 
-## security — v2.1 (2026-03-31)
+## security — v2.2 (2026-09-23)
 
 | Change | Affects |
 |--------|---------|
+| Next.js 16 renamed `middleware.ts` → `proxy.ts` (export `proxy`, Node.js runtime) — security-headers example updated | `proxy.ts` |
 | `X-XSS-Protection` removed — OWASP 2025 recommends omitting it (can introduce XSS in IE/Chrome <78) | `middleware.ts` |
 | In-memory rate limiter is serverless-unsafe — use Upstash/Redis in production | `lib/security/rate-limit.ts` |
 | CSP `unsafe-eval` + `unsafe-inline` flagged by OWASP 2025 — prefer nonce-based CSP | `middleware.ts` |
@@ -27,6 +28,8 @@
 | `javascript:` URLs blocked automatically in `router.push`, `redirect`, `<Link>` | redirect/navigation code |
 | `params` and `searchParams` are now `Promise<{...}>` — must be `await`-ed | all dynamic routes `[id]` |
 | `useFormState` removed (React 19) — use `useActionState` from `react` (returns `[state, action, isPending]`) | forms wired to Server Actions |
+| `middleware.ts` deprecated in Next.js 16 — renamed `proxy.ts`, export `proxy` (Node.js runtime only; codemod: `middleware-to-proxy`) | `middleware.ts` |
+| Server Actions return `ActionResult<T>` (from `error-handling`) instead of `{ errors?, success? }` — forms read `state.error.fields` / `state.error.message` | Server Actions, `useActionState` forms |
 
 ---
 
@@ -92,15 +95,47 @@
 
 ---
 
-## hexagonal-architecture — v1.0 (2026-08-06)
+## hexagonal-architecture — v2.0 (2026-09-23)
+
+| Change | Affects |
+|--------|---------|
+| Module-first layout `modules/<name>/{domain,application,adapters}` + public `index.ts` replaces `lib/core`, `lib/adapters`, `lib/composition.ts` | projects on the 1.0 layout |
+| Modules never import each other — the consumer owns the port, wiring lives in `composition/` | cross-module calls |
+| Full hexagonal scope for projects that adopt it (not only external integrations); plain CRUD stays a colocated service | new modules |
+| ESLint boundaries config rewritten for modules — element order matters (first match wins) | `eslint.config.mjs` |
+
+---
+
+## skill-sync — v2.0 (2026-09-23)
+
+| Change | Affects |
+|--------|---------|
+| `sync.sh` is now a registration check (exit 1 if a `skills/generic/` skill is missing from `_index.md`, README, AGENTS, CLAUDE or GEMINI); the `--dry-run`/`--scope` generator is removed | `skills/skill-sync/assets/sync.sh` |
+
+---
+
+## docker — v1.0 (2026-09-23)
 
 > New skill.
 
 | Change | Affects |
 |--------|---------|
-| Ports (interfaces) required at real external boundaries — payment gateways, notifications, storage, data access | `lib/core/ports/**` |
-| Core/application code forbidden from importing `lib/adapters/**` directly, enforced via `eslint-plugin-boundaries` | `eslint.config.mjs` |
-| No DI container — wiring happens by hand in a single `lib/composition.ts` | `lib/composition.ts` |
+| Multi-stage Next.js Dockerfile (standalone output, non-root, `HOSTNAME=0.0.0.0`) with dev and prod targets | `Dockerfile` |
+| Dev containers use Compose Watch; never bind-mount the project over `node_modules` | `docker-compose.yml` |
+| No secrets in `ARG`/`ENV` — only `NEXT_PUBLIC_*` are build args | `Dockerfile`, CI builds |
+| Turbopack file-watching fallback is `watchOptions.pollIntervalMs` (webpack: `WATCHPACK_POLLING`) | `next.config.ts` |
+
+---
+
+## ci-cd — v1.0 (2026-09-23)
+
+> New skill.
+
+| Change | Affects |
+|--------|---------|
+| `concurrency` group required when tests hit shared external state (`cancel-in-progress: false` for deploys) | `.github/workflows/*.yml` |
+| Least-privilege `permissions`, third-party actions pinned to a full commit SHA, no `pull_request_target` with PR code | `.github/workflows/*.yml` |
+| Debug CI-only failures from logs and the upstream tracker before adding retries or workarounds | failing CI runs |
 
 ---
 
@@ -131,6 +166,7 @@
 
 | Change | Affects |
 |--------|---------|
+| One canonical Server Action return shape: `ActionResult<T>` in `lib/action-result.ts`; `fields` values may be `undefined` (matches Zod's `flatten()`) | Server Actions in any skill |
 | Next.js 16.2: `unstable_retry()` — user-triggered retry inside `error.tsx` (unstable, watch for stable) | `error.tsx` boundary components |
 | Next.js 16.2: `unstable_catchError()` — component-level error handling without a full boundary (unstable) | granular error handling in Server Components |
 

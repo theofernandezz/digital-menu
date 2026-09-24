@@ -27,7 +27,7 @@ Server Action → Service layer (lib/services/) → Prisma singleton (lib/db.ts)
 - **Typed shapes** — use `Prisma.*CreateInput`/`Prisma.*UpdateInput` for inputs; `Prisma.UserGetPayload<...>` for outputs. No `any`.
 - **Never expose raw models** — always `select` or `omit` to exclude sensitive fields (e.g. `passwordHash`).
 - **Soft deletes** — filter `deletedAt: null` in every read query on soft-delete models.
-- **Swappable repositories** — only if the data source needs to be swappable (e.g. multi-source), see `skills/generic/hexagonal-architecture/SKILL.md`. Not for simple CRUD.
+- **Hexagonal projects** — if the project's `CLAUDE.md` declares hexagonal/modular architecture, Prisma access lives in the module's `adapters/` behind a repository port, not in `lib/services/`; a module only touches its own tables. Layout in `skills/generic/hexagonal-architecture/SKILL.md`. Plain CRUD with no rules of its own stays a service.
 
 ## Schema conventions
 
@@ -72,7 +72,7 @@ lib/
 ## Before finishing
 
 - [ ] `prisma` imported from `@/lib/db` only — never instantiated elsewhere
-- [ ] All DB access through `lib/services/`, not raw Prisma in routes/actions
+- [ ] All DB access through `lib/services/` (module `adapters/` in hexagonal projects), not raw Prisma in routes/actions
 - [ ] `select` or `omit` on every query that could expose sensitive fields
 - [ ] Soft-delete models filtered with `deletedAt: null` in all reads
 - [ ] Every new model has `@@map`, `@@index` on FKs, and `@updatedAt`

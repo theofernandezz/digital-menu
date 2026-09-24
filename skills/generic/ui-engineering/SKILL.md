@@ -342,6 +342,8 @@ components/
     └── ...
 ```
 
+> **With Atomic Design** (`atoms/molecules/organisms/templates`): `ui/` and `aceternity/` are vendored third-party primitives, not a tier of your design system. Pages don't import `ui/` as if it were `atoms/` — wrap or re-export what is reused through `atoms/`, or compose it directly inside a colocated component that is itself the composition point (e.g. a route's dialog). Never let `ui/` become a second, competing component hierarchy.
+
 ---
 
 ## 🚫 FORBIDDEN PATTERNS

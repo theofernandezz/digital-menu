@@ -35,6 +35,7 @@ When working with these actions/files, **read the corresponding skill FIRST**:
 | Designing UX flows / CRUD dashboards | `ux`                       | `skills/generic/ux/SKILL.md`               |
 | Working with Supabase/DB             | `database`                 | `skills/generic/database/SKILL.md`         |
 | Working with Prisma/PostgreSQL       | `prisma`                   | `skills/generic/prisma/SKILL.md`           |
+| Working with env vars / secrets      | `env-config`               | `skills/generic/env-config/SKILL.md`       |
 | Creating Server Actions              | `nextjs-core` + `security` | Read both skills                           |
 | Handling authentication              | `security`                 | `skills/generic/security/SKILL.md`         |
 | Writing tests                        | `testing`                  | `skills/generic/testing/SKILL.md`          |
@@ -42,6 +43,8 @@ When working with these actions/files, **read the corresponding skill FIRST**:
 | Creating API routes/webhooks         | `api-design`               | `skills/generic/api-design/SKILL.md`       |
 | Sending transactional emails         | `email`                    | `skills/generic/email/SKILL.md`            |
 | Integrating external services (payments, etc.) | `hexagonal-architecture`   | `skills/generic/hexagonal-architecture/SKILL.md` |
+| Writing Dockerfile/docker-compose    | `docker`                   | `skills/generic/docker/SKILL.md`           |
+| Writing GitHub Actions workflows     | `ci-cd`                    | `skills/generic/ci-cd/SKILL.md`            |
 | Handling errors                      | `error-handling`           | `skills/generic/error-handling/SKILL.md`   |
 | Internationalizing content           | `i18n`                     | `skills/generic/i18n/SKILL.md`             |
 | Working on accessibility             | `accessibility`            | `skills/generic/accessibility/SKILL.md`    |
@@ -81,10 +84,10 @@ For special library tasks:
 | Task                | Skill           | Instructions                                                 |
 | ------------------- | --------------- | ------------------------------------------------------------ |
 | Create new skill    | `skill-creator` | Read `skills/skill-creator/SKILL.md` and follow the template |
-| Sync AGENTS.md      | `skill-sync`    | Run `./skills/skill-sync/assets/sync.sh`                     |
+| Check skill registration | `skill-sync` | Run `./skills/skill-sync/assets/sync.sh` (fails if a skill isn't registered) |
 | Record improvements | `feedback-loop` | Read `skills/feedback-loop/SKILL.md`                         |
 | Fill in Project Context (interview) | `project-setup` | Read `skills/project-setup/SKILL.md` and run its Interview Protocol |
-| Write a spec before a non-trivial task | `spec-driven` | Read `skills/spec-driven/SKILL.md`, write `specs/<slug>.md` |
+| Size a spec before delegating | `spec-driven` | Read `skills/spec-driven/SKILL.md`, pick the mode, write `specs/<slug>.md` if delegating |
 
 ---
 

@@ -1,13 +1,13 @@
 ---
 name: Spec-Driven Development
 description: |
-  Meta-skill for the orchestrator: write a persisted spec before delegating a non-trivial
-  task to subagents. The spec — not the conversation, not the orchestrator's reasoning —
-  is what subagents implement against and what `verifier` checks diffs against.
+  Meta-skill for the orchestrator: size the spec to the cost of being wrong. Inline for clear
+  reversible work, a mini-spec + incremental loop for reversible-but-uncertain work, a full
+  persisted spec for anything costly to revert or split across subagents.
 license: MIT
 metadata:
   author: ai-library
-  version: "1.0"
+  version: "1.1"
   scope: [root]
   auto_invoke:
     - "About to delegate a non-trivial or multi-domain task to a subagent"
@@ -18,21 +18,46 @@ metadata:
 
 # Spec-Driven Development
 
-> **Core Principle:** A subagent starts with zero context. If what it implements against is the orchestrator's summary of the conversation, every ambiguity the orchestrator resolved in its head gets re-guessed, differently, by each subagent that touches the task. The spec is the fix: one artifact, written once, that every subagent and the verifier read identically.
+> **Core Principle:** Ambiguity gets guessed — differently by each subagent, and by the model filling gaps. A spec removes the ambiguity that is expensive to get wrong. It must not be bigger than that: a full spec for a task you don't understand yet is guessing written down. Size it to the cost of being wrong.
 
 ---
 
-## When to write one
+## Choose the mode
 
-Same bar as the global "Plan First" rule — non-trivial, multi-file, or architectural — with one addition specific to this library: **any task that will be split across two or more subagents**, even a small one, because that's exactly where each subagent's independent guessing diverges.
+| | **Reversible** (UI, features, logic) | **Costly to revert** |
+|---|---|---|
+| **Clear requirement, one file/domain** | Inline — no spec | Spec-first |
+| **Uncertain or exploratory requirement** | **Incremental** | Spec-first — resolve the uncertainty with the user first |
+| **2+ subagents with dependencies** | Spec-first | Spec-first |
 
-Skip it for a single-file, single-domain change you're handling inline without delegating.
+**Costly to revert:** schema/migrations, auth/RLS, payments, public API contracts, contracts between subagent steps already implemented.
 
-## Where it lives
+Ambiguity resolves with the user (`AskUserQuestion`) before writing either kind of spec — a vague criterion only moves the guessing downstream.
 
-`specs/<slug>.md` at the target project's root, git-tracked. Not ephemeral, not just a prompt — a spec that only exists inside a delegation prompt can't be checked against later, and can't be reused when the same feature needs a follow-up fix.
+---
 
-## The template
+## Incremental (mini-spec)
+
+Build the smallest thing that is usable on its own — a skateboard, not a wheel — then learn, then grow it.
+
+```markdown
+Vision: <one line — where this is heading>
+Outcome: <one line — what the user can do after this step>
+Criteria:
+- [ ] <1–3 falsifiable statements>
+```
+
+1. Build the smallest usable step against the criteria.
+2. Run the gate (tests/build); if a subagent built it, run `verifier`.
+3. Revisit the Vision: is this enough, or does it need a bigger vehicle? Update it, then next step.
+
+The mini-spec lives in the prompt/chat. Persist it to `specs/<slug>.md` only when you delegate it to a subagent or `verifier` — same rule as below. If a step touches anything costly to revert, stop and switch to spec-first.
+
+---
+
+## Spec-first
+
+`specs/<slug>.md` at the target project's root, git-tracked. A spec that only exists inside a delegation prompt can't be checked against later or reused for a follow-up fix.
 
 ```markdown
 # Spec: <short title>
@@ -41,37 +66,31 @@ Skip it for a single-file, single-domain change you're handling inline without d
 One or two sentences: what the user can do once this ships.
 
 ## Scope
-Files/areas this touches. Be specific enough that "is this in scope" has an obvious answer.
+Files/areas this touches. Specific enough that "is this in scope" has an obvious answer.
 
 ## Out of scope
-Explicitly excluded. This is what stops scope creep during implementation — if it's not
-listed as excluded and it's adjacent to the work, assume it'll get pulled in by accident.
+Explicitly excluded — adjacent work not listed here gets pulled in by accident.
 
 ## Constraints
-Hard limits: performance, security, format, edge-case behavior. Anything two people
-(or two subagents) could reasonably implement differently without this being spelled out.
+Hard limits: performance, security, format, edge cases. Anything two people (or two
+subagents) could reasonably implement differently.
 
 ## Acceptance criteria
-- [ ] Checklist, one falsifiable statement per line — not "works well," but something
-      a fresh reviewer with no other context can mark PASS/FAIL just by reading the diff.
+- [ ] One falsifiable statement per line — a fresh reviewer can mark PASS/FAIL from the diff alone.
 ```
 
-Resolve ambiguity here, with the user if needed (`AskUserQuestion`), before writing a single line of the spec. A spec with a vague acceptance criterion just moves the guessing downstream instead of removing it.
+### Delegating
 
-## Using it to delegate
+Pass each subagent only its slice of the spec — never the orchestrator's reasoning about *why*. Sequential steps (`data` → `backend` → `ui`) each get the previous step's concrete output (paths, exported names) added to their slice; the spec fixes intent, not implementation. See `CLAUDE.md`'s "How to delegate".
 
-Pass each subagent only the slice of the spec relevant to its domain — not the whole spec verbatim if half of it doesn't apply, and never the orchestrator's own reasoning about *why* the spec says what it says. See `CLAUDE.md`'s "How to delegate" — this skill is what feeds that step's prompt.
+### Verifying
 
-Sequential steps (e.g. `data` → `backend` → `ui`) each need the previous step's concrete output (file paths, exported names) added to their slice — the spec fixes intent, not implementation details another subagent produced after it was written.
+`verifier` receives the spec (or the relevant slice) plus the diff. It checks each criterion PASS/FAIL; a criterion with no test exercising it is a FAIL. See `.claude/agents/verifier.md`.
 
-## Using it to verify
+### Lifecycle
 
-`verifier` receives the spec (or the relevant slice) plus the diff — never the implementer's reasoning. It checks each acceptance criterion individually, PASS/FAIL. A criterion with no test exercising it is a FAIL even if the code looks right. See `.claude/agents/verifier.md`.
+Keep the spec after the task ships — it's the record of what was agreed, and the starting point for the next change to that feature.
 
-## Lifecycle
+### Worked example
 
-Keep the spec file after the task ships — it's the historical record of what was actually agreed, useful for the next change to the same feature. Don't delete it once merged; don't treat it as a scratch file.
-
-## Worked example
-
-See the "Full-stack features" walkthrough pattern in `CLAUDE.md` for a complete example (export-to-CSV feature: spec → `backend` → `ui` → `testing` → `verifier`).
+The "Full-stack features" walkthrough in `CLAUDE.md` (export-to-CSV: spec → `backend` → `ui` → `testing` → `verifier`).

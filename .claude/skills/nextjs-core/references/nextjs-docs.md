@@ -10,7 +10,7 @@
 
 ### Key Files
 - `app/layout.tsx` - Root layout
-- `middleware.ts` - Request middleware
+- `proxy.ts` - Request proxy (called `middleware.ts` before Next.js 16)
 - `lib/actions/` - Server Actions
 
 ### Route Structure
