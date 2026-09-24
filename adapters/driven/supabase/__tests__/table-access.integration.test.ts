@@ -18,6 +18,11 @@ import { getMyRestaurantUseCase } from "@/composition/container";
 const PG_INSUFFICIENT_PRIVILEGE = "42501";
 const PG_UNIQUE_VIOLATION = "23505";
 
+// The owner's test table lives in the seeded restaurant (tables 1-3 are the seed's), so it
+// takes a number no seed row uses; afterAll removes it, which keeps repeated runs clean.
+const OWN_TABLE_NUMBER = 900;
+const HIJACKED_TABLE_NUMBER = 903;
+
 const ORDERING_TABLES = ["dining_tables", "table_sessions", "orders", "order_items"] as const;
 
 function newAnonKeyClient(): SupabaseClient {
@@ -62,7 +67,7 @@ describe("customer ordering tables (integration)", () => {
 
     const table = await adminClient
       .from("dining_tables")
-      .insert({ restaurant_id: restaurantId, label: `test-${crypto.randomUUID().slice(0, 8)}` })
+      .insert({ restaurant_id: restaurantId, table_number: OWN_TABLE_NUMBER })
       .select("id")
       .single();
     if (table.error) throw table.error;
@@ -151,17 +156,17 @@ describe("customer ordering tables (integration)", () => {
     });
 
     it("updates its own dining table", async () => {
-      const renamed = `renamed-${crypto.randomUUID().slice(0, 8)}`;
+      const renumbered = 901;
 
       const { data, error } = await adminClient
         .from("dining_tables")
-        .update({ label: renamed })
+        .update({ table_number: renumbered })
         .eq("id", diningTableId)
-        .select("label")
+        .select("table_number")
         .single();
 
       expect(error).toBeNull();
-      expect(data?.label).toBe(renamed);
+      expect(data?.table_number).toBe(renumbered);
     });
 
     it("cannot insert orders directly (they are created through place_order only)", async () => {
@@ -185,7 +190,7 @@ describe("customer ordering tables (integration)", () => {
     it("cannot create a dining table under someone else's restaurant", async () => {
       const { error } = await otherOwnerClient
         .from("dining_tables")
-        .insert({ restaurant_id: restaurantId, label: `intruder-${crypto.randomUUID().slice(0, 8)}` });
+        .insert({ restaurant_id: restaurantId, table_number: 902 });
 
       expect(error?.code).toBe(PG_INSUFFICIENT_PRIVILEGE);
       expect(error?.message).toMatch(/row-level security/);
@@ -205,7 +210,7 @@ describe("customer ordering tables (integration)", () => {
     it("cannot update or delete someone else's dining table", async () => {
       const updated = await otherOwnerClient
         .from("dining_tables")
-        .update({ label: "hijacked" })
+        .update({ table_number: HIJACKED_TABLE_NUMBER })
         .eq("id", diningTableId)
         .select("id");
       const deleted = await otherOwnerClient.from("dining_tables").delete().eq("id", diningTableId).select("id");
@@ -214,8 +219,8 @@ describe("customer ordering tables (integration)", () => {
       expect(updated.data).toEqual([]);
       expect(deleted.data).toEqual([]);
 
-      const still = await adminClient.from("dining_tables").select("label").eq("id", diningTableId).single();
-      expect(still.data?.label).not.toBe("hijacked");
+      const still = await adminClient.from("dining_tables").select("table_number").eq("id", diningTableId).single();
+      expect(still.data?.table_number).not.toBe(HIJACKED_TABLE_NUMBER);
     });
   });
 

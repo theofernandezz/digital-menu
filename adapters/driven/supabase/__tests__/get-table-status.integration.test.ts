@@ -12,7 +12,7 @@ import {
   type TestRestaurant,
 } from "./support/ordering-fixtures";
 
-type StatusRow = { label: string; is_open: boolean };
+type StatusRow = { table_number: number; is_open: boolean };
 
 describe("get_table_status (integration)", () => {
   let service: SupabaseClient;
@@ -37,19 +37,19 @@ describe("get_table_status (integration)", () => {
     return data as StatusRow[];
   }
 
-  async function labelOf(tableId: string): Promise<string> {
-    const { data, error } = await service.from("dining_tables").select("label").eq("id", tableId).single();
+  async function tableNumberOf(tableId: string): Promise<number> {
+    const { data, error } = await service.from("dining_tables").select("table_number").eq("id", tableId).single();
     if (error) throw error;
-    return data.label;
+    return data.table_number;
   }
 
-  it("reports a table with an open session as open, and exposes only its label and state", async () => {
+  it("reports a table with an open session as open, and exposes only its number and state", async () => {
     const table = await createTable(service, shop.id);
 
     const rows = await statusOf(table.token);
 
-    expect(rows).toEqual([{ label: await labelOf(table.id), is_open: true }]);
-    expect(Object.keys(rows[0] ?? {}).sort()).toEqual(["is_open", "label"]); // never the token
+    expect(rows).toEqual([{ table_number: await tableNumberOf(table.id), is_open: true }]);
+    expect(Object.keys(rows[0] ?? {}).sort()).toEqual(["is_open", "table_number"]); // never the token
   });
 
   it("reports a table without an open session as closed", async () => {

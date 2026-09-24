@@ -88,15 +88,23 @@ export async function createDish(
   return { id: dish.data.id, name, price: options.price };
 }
 
+// Table numbers are 1-999 and unique per restaurant. Every test file builds its own
+// restaurants, so numbering each restaurant's tables from 1 cannot collide across
+// files or across repeated runs, and never grows past a handful.
+const nextTableNumber = new Map<string, number>();
+
 // A table with a random token, and (by default) an open session.
 export async function createTable(
   service: SupabaseClient,
   restaurantId: string,
   options: { open?: boolean } = {},
 ): Promise<TestTable> {
+  const tableNumber = (nextTableNumber.get(restaurantId) ?? 0) + 1;
+  nextTableNumber.set(restaurantId, tableNumber);
+
   const table = await service
     .from("dining_tables")
-    .insert({ restaurant_id: restaurantId, label: `table-${shortId()}` })
+    .insert({ restaurant_id: restaurantId, table_number: tableNumber })
     .select("id, qr_token")
     .single();
   if (table.error) throw table.error;

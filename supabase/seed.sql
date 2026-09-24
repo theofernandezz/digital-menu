@@ -51,10 +51,10 @@ insert into menu_items (restaurant_id, category_id, name, description, price, di
 -- Feature 1: three tables with readable tokens (http://localhost:3000/t/dev-table-1)
 -- and an open session on each. Local/CI only — production tokens are random
 -- (the column default), never these.
-insert into dining_tables (restaurant_id, label, qr_token) values
-  ('22222222-2222-4222-8222-222222222222', 'Mesa 1', 'dev-table-1'),
-  ('22222222-2222-4222-8222-222222222222', 'Mesa 2', 'dev-table-2'),
-  ('22222222-2222-4222-8222-222222222222', 'Mesa 3', 'dev-table-3');
+insert into dining_tables (restaurant_id, table_number, qr_token) values
+  ('22222222-2222-4222-8222-222222222222', 1, 'dev-table-1'),
+  ('22222222-2222-4222-8222-222222222222', 2, 'dev-table-2'),
+  ('22222222-2222-4222-8222-222222222222', 3, 'dev-table-3');
 
 insert into table_sessions (restaurant_id, dining_table_id)
 select restaurant_id, id from dining_tables;
