@@ -1,14 +1,16 @@
 name: Supabase Keep-Alive
 
-# Supabase's free tier pauses projects after a period of no API activity.
-# This project's only Supabase traffic otherwise comes from CI runs
+# Supabase pauses Free Plan projects after a week of low activity, and its
+# own docs put the bar at "a few user requests to the database each day
+# over the previous week" — not "at least once within 7 days". This
+# project's only Supabase traffic otherwise comes from CI runs
 # (docker-compose.yml:docker-compose.ci.yml pnpm test:integration), which
-# only fire on push/PR — quiet weeks mean quiet Supabase, hence the pause
-# warning email. Runs every 4 days, well under the pause threshold, so a
-# missed or delayed run still leaves margin.
+# only fire on push/PR — quiet weeks mean quiet Supabase. A previous
+# every-4-days schedule still let the project get paused, so this runs
+# daily instead.
 on:
   schedule:
-    - cron: '0 6 */4 * *'
+    - cron: '0 6 * * *'
   workflow_dispatch:
 
 jobs:
